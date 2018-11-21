@@ -1,0 +1,648 @@
+package main
+
+import (
+	"bytes"
+	"encoding/xml"
+	"fmt"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/hornbill/goApiLib"
+	"github.com/hornbill/pb"
+)
+
+//processCallData - Query External call data, process accordingly
+func processCallData() {
+	arrCallDetailsMaps, success := queryDBCallDetails(mapGenericConf.ServiceManagerRequestType, mapGenericConf.AppRequestType, connStrAppDB)
+	if success {
+
+		bar := pb.StartNew(len(arrCallDetailsMaps))
+		defer bar.FinishPrint(mapGenericConf.ServiceManagerRequestType + " Request Import Complete")
+
+		jobs := make(chan RequestDetails, configMaxRoutines)
+
+		for w := 0; w < configMaxRoutines; w++ {
+			wg.Add(1)
+			espXmlmc := NewEspXmlmcSession(importConf.HBConf.APIKeys[w])
+			go logNewCallJobs(jobs, &wg, espXmlmc)
+		}
+
+		for _, callRecord := range arrCallDetailsMaps {
+			mutexBar.Lock()
+			bar.Increment()
+			mutexBar.Unlock()
+			jobs <- RequestDetails{GenericImportConf: mapGenericConf, CallMap: callRecord}
+		}
+
+		close(jobs)
+		wg.Wait()
+
+	} else {
+		logger(4, "Request search failed for type: "+mapGenericConf.ServiceManagerRequestType+"["+mapGenericConf.AppRequestType+"]", true)
+	}
+}
+
+//processCallDataODBC - Query ODBC call data, process accordingly
+func processCallDataODBC() {
+	arrCallDetailsMaps, success := queryDBCallDetails(mapGenericConf.ServiceManagerRequestType, mapGenericConf.AppRequestType, connStrAppDB)
+	if success {
+		bar := pb.StartNew(len(arrCallDetailsMaps))
+		defer bar.FinishPrint(mapGenericConf.ServiceManagerRequestType + " Request Import Complete")
+		espXmlmc := NewEspXmlmcSession(importConf.HBConf.APIKeys[0])
+
+		newCallRef := ""
+		oldCallRef := ""
+		oldCallGUID := ""
+		for _, callRecord := range arrCallDetailsMaps {
+			mutexBar.Lock()
+			bar.Increment()
+			mutexBar.Unlock()
+
+			var buffer bytes.Buffer
+
+			if callRecord[mapGenericConf.RequestReferenceColumn] != nil {
+				buffer.WriteString(loggerGen(3, "   "))
+				oldCallRef, newCallRef, oldCallGUID = logNewCall(RequestDetails{GenericImportConf: mapGenericConf, CallMap: callRecord}, espXmlmc, &buffer)
+			}
+			//Process Historic Updates
+			getHistoricUpdates(&RequestDetails{GenericImportConf: mapGenericConf, CallMap: callRecord, AppRequestRef: oldCallRef, SMRequestRef: newCallRef, AppRequestGUID: oldCallGUID}, espXmlmc, &buffer)
+
+			bufferMutex.Lock()
+			loggerWriteBuffer(buffer.String())
+			bufferMutex.Unlock()
+			buffer.Reset()
+		}
+	} else {
+		logger(4, "Request search failed for type: "+mapGenericConf.ServiceManagerRequestType+"["+mapGenericConf.AppRequestType+"]", true)
+	}
+}
+
+func processBPMs() {
+	logger(3, " ", false)
+	logger(1, "[BPM] Spawning workflows for "+strconv.Itoa(len(arrSpawnBPMs))+" Requests", true)
+	bar := pb.StartNew(len(arrSpawnBPMs))
+	defer bar.FinishPrint("BPM spawning complete")
+
+	jobs := make(chan spawnBPMStruct, configMaxRoutines)
+
+	for w := 0; w < configMaxRoutines; w++ {
+		wg.Add(1)
+		espXmlmc := NewEspXmlmcSession(importConf.HBConf.APIKeys[w])
+		go spawnBPM(jobs, &wg, espXmlmc)
+	}
+
+	for _, requestRecord := range arrSpawnBPMs {
+		mutexBar.Lock()
+		bar.Increment()
+		mutexBar.Unlock()
+		jobs <- requestRecord
+	}
+	close(jobs)
+	wg.Wait()
+}
+
+//logNewCallJobs - Function takes external call data in a map, and logs to Hornbill
+func logNewCallJobs(jobs chan RequestDetails, wg *sync.WaitGroup, espXmlmc *apiLib.XmlmcInstStruct) {
+	defer wg.Done()
+	for request := range jobs {
+		var buffer bytes.Buffer
+		buffer.WriteString(loggerGen(3, "   "))
+
+		request.AppRequestRef, request.SMRequestRef, request.AppRequestGUID = logNewCall(request, espXmlmc, &buffer)
+
+		getHistoricUpdates(&request, espXmlmc, &buffer)
+
+		bufferMutex.Lock()
+		loggerWriteBuffer(buffer.String())
+		bufferMutex.Unlock()
+		buffer.Reset()
+	}
+}
+
+func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) (string, string, string) {
+	oldReference := ""
+	oldGUID := ""
+	newReference := ""
+
+	oldRequestRefMapping := "[" + request.GenericImportConf.RequestReferenceColumn + "]"
+	oldReference = getFieldValue(oldRequestRefMapping, &request.CallMap)
+
+	oldGUIDMapping := "[" + request.GenericImportConf.RequestGUID + "]"
+	oldGUID = getFieldValue(oldGUIDMapping, &request.CallMap)
+
+	buffer.WriteString(loggerGen(1, "Source Request Reference & GUID: ["+oldReference+"] ["+oldGUID+"]"))
+
+	strStatus := "status.open"
+	boolOnHoldRequest := false
+
+	//Get request status from request & map
+	statusMapping := fmt.Sprintf("%v", mapGenericConf.CoreFieldMapping["h_status"])
+	strStatusID := getFieldValue(statusMapping, &request.CallMap)
+	if importConf.StatusMapping[strStatusID] != nil {
+		strStatus = fmt.Sprintf("%v", importConf.StatusMapping[strStatusID])
+	}
+
+	//Build slice to hold core columns
+	coreFields := make(map[string]string)
+	strAttribute := ""
+	strMapping := ""
+	strServiceBPM := ""
+	boolUpdateLogDate := false
+	strLoggedDate := ""
+	strClosedDate := ""
+
+	//Loop through core fields from config, add to XMLMC Params
+	for k, v := range mapGenericConf.CoreFieldMapping {
+		boolAutoProcess := true
+		strAttribute = fmt.Sprintf("%v", k)
+		strMapping = fmt.Sprintf("%v", v)
+
+		//Owning Analyst Name
+		if strAttribute == "h_ownerid" {
+			strOwnerID := getFieldValue(strMapping, &request.CallMap)
+			if strOwnerID != "" {
+				boolAnalystExists := doesAnalystExist(strOwnerID, espXmlmc, buffer)
+				if boolAnalystExists {
+					//Get analyst from cache as exists
+					analystIsInCache, strOwnerName := recordInCache(strOwnerID, "Analyst")
+					if analystIsInCache && strOwnerName != "" {
+						coreFields[strAttribute] = strOwnerID
+						coreFields["h_ownername"] = strOwnerName
+					}
+				}
+			}
+			boolAutoProcess = false
+		}
+
+		//Customer ID & Name
+		if strAttribute == "h_fk_user_id" {
+			strCustID := getFieldValue(strMapping, &request.CallMap)
+			if strCustID != "" {
+				boolCustExists := doesCustomerExist(strCustID, espXmlmc, buffer)
+				if boolCustExists {
+					//Get customer from cache as exists
+					customerIsInCache, strCustName := recordInCache(strCustID, "Customer")
+					if customerIsInCache && strCustName != "" {
+						coreFields[strAttribute] = strCustID
+						coreFields["h_fk_user_name"] = strCustName
+					}
+				}
+			}
+			boolAutoProcess = false
+		}
+
+		//Priority ID & Name
+		//-- Get Priority ID
+		if strAttribute == "h_fk_priorityid" {
+			strPriorityID := getFieldValue(strMapping, &request.CallMap)
+			strPriorityMapped, strPriorityName := getCallPriorityID(strPriorityID, espXmlmc, buffer)
+			if strPriorityMapped == "" && mapGenericConf.DefaultPriority != "" {
+				strPriorityID = getPriorityID(mapGenericConf.DefaultPriority, espXmlmc, buffer)
+				strPriorityName = mapGenericConf.DefaultPriority
+			}
+			coreFields[strAttribute] = strPriorityMapped
+			coreFields["h_fk_priorityname"] = strPriorityName
+			boolAutoProcess = false
+		}
+
+		// Category ID & Name
+		if strAttribute == "h_category_id" && strMapping != "" {
+			//-- Get Call Category ID
+			strCategoryID, strCategoryName := getCallCategoryID(&request.CallMap, "Request", espXmlmc, buffer)
+			if strCategoryID != "" && strCategoryName != "" {
+				coreFields[strAttribute] = strCategoryID
+				coreFields["h_category"] = strCategoryName
+			}
+			boolAutoProcess = false
+		}
+
+		// Closure Category ID & Name
+		if strAttribute == "h_closure_category_id" && strMapping != "" {
+			strClosureCategoryID, strClosureCategoryName := getCallCategoryID(&request.CallMap, "Closure", espXmlmc, buffer)
+			if strClosureCategoryID != "" {
+				coreFields[strAttribute] = strClosureCategoryID
+				coreFields["h_closure_category"] = strClosureCategoryName
+			}
+			boolAutoProcess = false
+		}
+
+		// Service ID & Name, & BPM Workflow
+		if strAttribute == "h_fk_serviceid" {
+			//-- Get Service ID
+			swServiceID := getFieldValue(strMapping, &request.CallMap)
+			strServiceID := getCallServiceID(swServiceID, espXmlmc, buffer)
+			if strServiceID == "" && mapGenericConf.DefaultService != "" {
+				strServiceID = getServiceID(mapGenericConf.DefaultService, espXmlmc, buffer)
+			}
+			if strServiceID != "" {
+				//-- Get record from Service Cache
+				strServiceName := ""
+				mutexServices.Lock()
+				for _, service := range services {
+					if strconv.Itoa(service.ServiceID) == strServiceID {
+						strServiceName = service.ServiceName
+						switch request.GenericImportConf.ServiceManagerRequestType {
+						case "Incident":
+							strServiceBPM = service.ServiceBPMIncident
+						case "Service Request":
+							strServiceBPM = service.ServiceBPMService
+						case "Change Request":
+							strServiceBPM = service.ServiceBPMChange
+						case "Problem":
+							strServiceBPM = service.ServiceBPMProblem
+						case "Known Error":
+							strServiceBPM = service.ServiceBPMKnownError
+						}
+					}
+				}
+				mutexServices.Unlock()
+
+				if strServiceName != "" {
+					coreFields[strAttribute] = strServiceID
+					coreFields["h_fk_servicename"] = strServiceName
+				}
+			}
+			boolAutoProcess = false
+		}
+
+		// Team ID and Name
+		if strAttribute == "h_fk_team_id" {
+			//-- Get Team ID
+			swTeamID := getFieldValue(strMapping, &request.CallMap)
+			strTeamID, strTeamName := getCallTeamID(swTeamID, espXmlmc, buffer)
+			if strTeamID == "" && mapGenericConf.DefaultTeam != "" {
+				strTeamName = mapGenericConf.DefaultTeam
+				strTeamID = getTeamID(strTeamName, espXmlmc, buffer)
+			}
+			if strTeamID != "" && strTeamName != "" {
+				coreFields[strAttribute] = strTeamID
+				coreFields["h_fk_team_name"] = strTeamName
+			}
+			boolAutoProcess = false
+		}
+
+		// Site ID and Name
+		if strAttribute == "h_site_id" {
+			//-- Get site ID
+			siteID, siteName := getSiteID(&request.CallMap, espXmlmc, buffer)
+			if siteID != "" && siteName != "" {
+				coreFields[strAttribute] = siteID
+				coreFields["h_site"] = siteName
+			}
+			boolAutoProcess = false
+		}
+
+		// Resolved Date/Time
+		if strAttribute == "h_dateresolved" && strMapping != "" && (strStatus == "status.resolved" || strStatus == "status.closed") {
+			strResolvedDate := getFieldValue(strMapping, &request.CallMap)
+			if strResolvedDate != "" {
+				coreFields[strAttribute] = parseDateTime(strResolvedDate)
+			}
+		}
+
+		// Closed Date/Time
+		if strAttribute == "h_dateclosed" && strMapping != "" {
+
+			strClosedDate = parseDateTime(getFieldValue(strMapping, &request.CallMap))
+			if strClosedDate != "" && strStatus != "status.onHold" {
+				coreFields[strAttribute] = parseDateTime(strClosedDate)
+			}
+		}
+
+		// Request Status
+		if strAttribute == "h_status" {
+			if strStatus == "status.onHold" {
+				strStatus = "status.open"
+				boolOnHoldRequest = true
+			}
+			coreFields[strAttribute] = strStatus
+			boolAutoProcess = false
+		}
+
+		// Log Date/Time - setup ready to be processed after call logged
+		if strAttribute == "h_datelogged" && strMapping != "" {
+			strLoggedDate = parseDateTime(getFieldValue(strMapping, &request.CallMap))
+
+			if strLoggedDate != "" {
+				boolUpdateLogDate = true
+			}
+		}
+
+		//Everything Else
+		if boolAutoProcess &&
+			strAttribute != "h_status" &&
+			strAttribute != "h_requesttype" &&
+			strAttribute != "h_request_prefix" &&
+			strAttribute != "h_category" &&
+			strAttribute != "h_closure_category" &&
+			strAttribute != "h_fk_servicename" &&
+			strAttribute != "h_fk_team_name" &&
+			strAttribute != "h_site" &&
+			strAttribute != "h_fk_priorityname" &&
+			strAttribute != "h_ownername" &&
+			strAttribute != "h_fk_user_name" &&
+			strAttribute != "h_datelogged" &&
+			strAttribute != "h_dateresolved" &&
+			strAttribute != "h_dateclosed" {
+
+			if strMapping != "" && getFieldValue(strMapping, &request.CallMap) != "" {
+				coreFields[strAttribute] = getFieldValue(strMapping, &request.CallMap)
+			}
+		}
+
+	}
+
+	espXmlmc.SetParam("application", appServiceManager)
+	espXmlmc.SetParam("entity", "Requests")
+	espXmlmc.SetParam("returnModifiedData", "true")
+	espXmlmc.OpenElement("primaryEntityData")
+	espXmlmc.OpenElement("record")
+
+	for k, v := range coreFields {
+		espXmlmc.SetParam(k, v)
+	}
+
+	//Add request class & prefix
+	espXmlmc.SetParam("h_requesttype", request.GenericImportConf.ServiceManagerRequestType)
+	espXmlmc.SetParam("h_request_prefix", reqPrefix)
+	espXmlmc.CloseElement("record")
+	espXmlmc.CloseElement("primaryEntityData")
+
+	//Class Specific Data Insert
+	espXmlmc.OpenElement("relatedEntityData")
+	espXmlmc.SetParam("relationshipName", "Call Type")
+	espXmlmc.SetParam("entityAction", "insert")
+	espXmlmc.OpenElement("record")
+	strAttribute = ""
+	strMapping = ""
+	//Loop through AdditionalFieldMapping fields from config, add to XMLMC Params if not empty
+	for k, v := range mapGenericConf.AdditionalFieldMapping {
+		strAttribute = fmt.Sprintf("%v", k)
+		strMapping = fmt.Sprintf("%v", v)
+		if strMapping != "" && getFieldValue(strMapping, &request.CallMap) != "" {
+			espXmlmc.SetParam(strAttribute, getFieldValue(strMapping, &request.CallMap))
+		}
+	}
+
+	espXmlmc.CloseElement("record")
+	espXmlmc.CloseElement("relatedEntityData")
+
+	//Extended Data Insert
+	espXmlmc.OpenElement("relatedEntityData")
+	espXmlmc.SetParam("relationshipName", "Extended Information")
+	espXmlmc.SetParam("entityAction", "insert")
+	espXmlmc.OpenElement("record")
+	espXmlmc.SetParam("h_request_type", request.GenericImportConf.ServiceManagerRequestType)
+	strAttribute = ""
+	strMapping = ""
+	//Loop through AdditionalFieldMapping fields from config, add to XMLMC Params if not empty
+	for k, v := range mapGenericConf.AdditionalFieldMapping {
+		strAttribute = fmt.Sprintf("%v", k)
+		strSubString := "h_custom_"
+		if strings.Contains(strAttribute, strSubString) {
+			strAttribute = convExtendedColName(strAttribute)
+			strMapping = fmt.Sprintf("%s", v)
+			if strMapping != "" && getFieldValue(strMapping, &request.CallMap) != "" {
+				espXmlmc.SetParam(strAttribute, getFieldValue(strMapping, &request.CallMap))
+			}
+		}
+	}
+
+	espXmlmc.CloseElement("record")
+	espXmlmc.CloseElement("relatedEntityData")
+
+	//-- Check for Dry Run
+	if !configDryRun {
+		XMLRequest := espXmlmc.GetParam()
+		XMLCreate, xmlmcErr := espXmlmc.Invoke("data", "entityAddRecord")
+		if xmlmcErr != nil {
+
+			mutexCounters.Lock()
+			counters.createdSkipped++
+			mutexCounters.Unlock()
+			buffer.WriteString(loggerGen(4, "API Call Failed: New Request : "+xmlmcErr.Error()))
+			buffer.WriteString(loggerGen(1, "[XML] "+XMLRequest))
+			return oldReference, newReference, oldGUID
+		}
+		var xmlRespon xmlmcRequestResponseStruct
+
+		err := xml.Unmarshal([]byte(XMLCreate), &xmlRespon)
+		if err != nil {
+			mutexCounters.Lock()
+			counters.createdSkipped++
+			mutexCounters.Unlock()
+			buffer.WriteString(loggerGen(4, "Response Unmarshal failed: New Request : "+fmt.Sprintf("%v", err)))
+			buffer.WriteString(loggerGen(1, "[XML] "+XMLRequest))
+			return oldReference, newReference, oldGUID
+		}
+		if xmlRespon.MethodResult != "ok" {
+			mutexCounters.Lock()
+			counters.createdSkipped++
+			mutexCounters.Unlock()
+			buffer.WriteString(loggerGen(4, "MethodResult not OK: New Request : "+xmlRespon.State.ErrorRet))
+			buffer.WriteString(loggerGen(1, "[XML] "+XMLRequest))
+			return oldReference, newReference, oldGUID
+		}
+
+		newReference = xmlRespon.RequestID
+
+		mutexCounters.Lock()
+		counters.created++
+		mutexCounters.Unlock()
+
+		buffer.WriteString(loggerGen(1, "New Service Manager Request: "+newReference))
+
+		createActivityStream(newReference, espXmlmc, buffer)
+
+		//Now update Logdate
+		if boolUpdateLogDate {
+			updateLogDate(newReference, strLoggedDate, espXmlmc, buffer)
+		}
+
+		//Now do BPM Processing
+		if strStatus != "status.resolved" &&
+			strStatus != "status.closed" &&
+			strStatus != "status.cancelled" {
+			if newReference != "" && strServiceBPM != "" {
+				mutexCounters.Lock()
+				counters.bpmAvailable++
+				mutexCounters.Unlock()
+				arrSpawnBPMs = append(arrSpawnBPMs, spawnBPMStruct{RequestID: newReference, BPMID: strServiceBPM})
+			}
+		}
+
+		// Now handle calls in an On Hold status
+		if boolOnHoldRequest {
+			holdRequest(newReference, strClosedDate, espXmlmc, buffer)
+		}
+	} else {
+		//-- DEBUG XML TO LOG FILE
+		var XMLSTRING = espXmlmc.GetParam()
+		buffer.WriteString(loggerGen(1, "Request Log XML "+XMLSTRING))
+		mutexCounters.Lock()
+		counters.createdSkipped++
+		mutexCounters.Unlock()
+		espXmlmc.ClearParam()
+	}
+	return oldReference, newReference, oldGUID
+}
+
+func holdRequest(newCallRef, holdDate string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
+	espXmlmc.SetParam("requestId", newCallRef)
+	espXmlmc.SetParam("onHoldUntil", holdDate)
+	espXmlmc.SetParam("strReason", "Request imported in an On Hold status. See Historical Request Updates for further information.")
+	XMLHold := espXmlmc.GetParam()
+	XMLBPM, xmlmcErr := espXmlmc.Invoke("apps/"+appServiceManager+"/Requests", "holdRequest")
+	if xmlmcErr != nil {
+		buffer.WriteString(loggerGen(4, "XMLMC error: Unable to place request on hold ["+newCallRef+"] : "+fmt.Sprintf("%v", xmlmcErr)))
+		buffer.WriteString(loggerGen(1, XMLHold))
+		return
+	}
+	var xmlRespon xmlmcResponse
+
+	errLogDate := xml.Unmarshal([]byte(XMLBPM), &xmlRespon)
+	if errLogDate != nil {
+		buffer.WriteString(loggerGen(4, "Unmarshal error: Unable to place request on hold ["+newCallRef+"] : "+fmt.Sprintf("%v", errLogDate)))
+		buffer.WriteString(loggerGen(1, XMLHold))
+		return
+	}
+	if xmlRespon.MethodResult != "ok" {
+		buffer.WriteString(loggerGen(4, "MethodResult not OK: Unable to place request on hold ["+newCallRef+"] : "+xmlRespon.State.ErrorRet))
+		buffer.WriteString(loggerGen(1, XMLHold))
+		return
+	}
+	buffer.WriteString(loggerGen(1, "Request On-Hold Success"))
+	return
+}
+
+func spawnBPM(jobs chan spawnBPMStruct, wg *sync.WaitGroup, espXmlmc *apiLib.XmlmcInstStruct) {
+	defer wg.Done()
+	for requestRecord := range jobs {
+		var buffer bytes.Buffer
+		buffer.WriteString(loggerGen(3, "   "))
+		buffer.WriteString(loggerGen(1, "Spawning BPM ["+requestRecord.BPMID+"] for ["+requestRecord.RequestID+"]"))
+
+		time.Sleep(100 * time.Millisecond)
+		espXmlmc.SetParam("application", appServiceManager)
+		espXmlmc.SetParam("name", requestRecord.BPMID)
+		espXmlmc.OpenElement("inputParams")
+		espXmlmc.SetParam("objectRefUrn", "urn:sys:entity:"+appServiceManager+":Requests:"+requestRecord.RequestID)
+		espXmlmc.SetParam("requestId", requestRecord.RequestID)
+		espXmlmc.CloseElement("inputParams")
+		XMLBPM, xmlmcErr := espXmlmc.Invoke("bpm", "processSpawn")
+		if xmlmcErr != nil {
+			buffer.WriteString(loggerGen(4, "API Call Failed: Spawn BPM: "+fmt.Sprintf("%v", xmlmcErr)))
+			return
+		}
+		var xmlRespon xmlmcBPMSpawnedStruct
+
+		errBPM := xml.Unmarshal([]byte(XMLBPM), &xmlRespon)
+		if errBPM != nil {
+			buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Spawn BPM: "+fmt.Sprintf("%v", errBPM)))
+			return
+		}
+		if xmlRespon.MethodResult != "ok" {
+			buffer.WriteString(loggerGen(4, "MethodResult not OK: Spawn BPM: "+xmlRespon.State.ErrorRet))
+			return
+		}
+		mutexCounters.Lock()
+		counters.bpmSpawned++
+		mutexCounters.Unlock()
+		buffer.WriteString(loggerGen(1, "BPM Spawned: "+xmlRespon.Identifier))
+		updateRequestBpm(requestRecord.RequestID, xmlRespon.Identifier, espXmlmc, &buffer)
+
+		bufferMutex.Lock()
+		loggerWriteBuffer(buffer.String())
+		bufferMutex.Unlock()
+		buffer.Reset()
+	}
+}
+
+func updateRequestBpm(newCallRef, bpmID string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
+	espXmlmc.SetParam("application", appServiceManager)
+	espXmlmc.SetParam("table", "h_itsm_requests")
+	espXmlmc.OpenElement("recordData")
+	espXmlmc.SetParam("keyValue", newCallRef)
+	espXmlmc.OpenElement("record")
+	espXmlmc.SetParam("h_bpm_id", bpmID)
+	espXmlmc.CloseElement("record")
+	espXmlmc.CloseElement("recordData")
+
+	XMLBPMUpdate, xmlmcErr := espXmlmc.Invoke("data", "updateRecord")
+	if xmlmcErr != nil {
+		buffer.WriteString(loggerGen(4, "API Call Failed: Associate BPM to Request: "+fmt.Sprintf("%v", xmlmcErr)))
+		return
+	}
+	var xmlRespon xmlmcResponse
+	errBPMSpawn := xml.Unmarshal([]byte(XMLBPMUpdate), &xmlRespon)
+	if errBPMSpawn != nil {
+		buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Associate BPM to Request: "+fmt.Sprintf("%v", errBPMSpawn)))
+		return
+	}
+	if xmlRespon.MethodResult != "ok" {
+		buffer.WriteString(loggerGen(4, "MethodResult not OK: Associate BPM to Request: "+xmlRespon.State.ErrorRet))
+		return
+	}
+
+	buffer.WriteString(loggerGen(1, "BPM ["+bpmID+"] Associated to Request ["+newCallRef+"]"))
+	mutexCounters.Lock()
+	counters.bpmRequest++
+	mutexCounters.Unlock()
+	return
+}
+
+func updateLogDate(newCallRef, logDate string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
+	espXmlmc.SetParam("application", appServiceManager)
+	espXmlmc.SetParam("entity", "Requests")
+	espXmlmc.OpenElement("primaryEntityData")
+	espXmlmc.OpenElement("record")
+	espXmlmc.SetParam("h_pk_reference", newCallRef)
+	espXmlmc.SetParam("h_datelogged", logDate)
+	espXmlmc.CloseElement("record")
+	espXmlmc.CloseElement("primaryEntityData")
+	XMLLogDate, xmlmcErr := espXmlmc.Invoke("data", "entityUpdateRecord")
+	if xmlmcErr != nil {
+		buffer.WriteString(loggerGen(4, "API Call Failed: Update Log Date ["+newCallRef+"] : "+fmt.Sprintf("%v", xmlmcErr)))
+		return
+	}
+	var xmlRespon xmlmcResponse
+	errLogDate := xml.Unmarshal([]byte(XMLLogDate), &xmlRespon)
+	if errLogDate != nil {
+		buffer.WriteString(loggerGen(4, "Unmarshall Response Failed: Update Log Date ["+newCallRef+"] : "+fmt.Sprintf("%v", errLogDate)))
+		return
+	}
+	if xmlRespon.MethodResult != "ok" {
+		buffer.WriteString(loggerGen(4, "MethodResult Not OK: Update Log Date ["+newCallRef+"] : "+xmlRespon.State.ErrorRet))
+		return
+	}
+	buffer.WriteString(loggerGen(1, "Request Log Date Update Successful"))
+	return
+}
+
+func createActivityStream(newCallRef string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
+	//Now update the request to create the activity stream
+	espXmlmc.SetParam("socialObjectRef", "urn:sys:entity:"+appServiceManager+":Requests:"+newCallRef)
+	espXmlmc.SetParam("content", "Request Imported")
+	espXmlmc.SetParam("visibility", "public")
+	espXmlmc.SetParam("type", "Logged")
+	fixed, err := espXmlmc.Invoke("activity", "postMessage")
+	if err != nil {
+		buffer.WriteString(loggerGen(5, "API Call Failed: Activity Stream Creation ["+newCallRef+"] : "+fmt.Sprintf("%v", err)))
+		return
+	}
+	var xmlRespon xmlmcResponse
+	err = xml.Unmarshal([]byte(fixed), &xmlRespon)
+	if err != nil {
+		buffer.WriteString(loggerGen(5, "Unmarshall Response Failed: Activity Stream Creation ["+newCallRef+"] : "+fmt.Sprintf("%v", err)))
+		return
+	}
+	if xmlRespon.MethodResult != "ok" {
+		buffer.WriteString(loggerGen(5, "MethodResult Not OK: Activity Stream Creation ["+newCallRef+"] : "+xmlRespon.State.ErrorRet))
+		return
+	}
+
+	buffer.WriteString(loggerGen(1, "Activity Stream Creation Successful"))
+	return
+}
