@@ -359,10 +359,12 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 			strAttribute != "h_site" &&
 			strAttribute != "h_fk_priorityname" &&
 			strAttribute != "h_ownername" &&
+			strAttribute != "h_fk_user_id" &&
 			strAttribute != "h_fk_user_name" &&
 			strAttribute != "h_datelogged" &&
 			strAttribute != "h_dateresolved" &&
-			strAttribute != "h_dateclosed" {
+			strAttribute != "h_dateclosed" &&
+			strAttribute != "h_customer_type" {
 
 			if strMapping != "" && getFieldValue(strMapping, &request.CallMap) != "" {
 				coreFields[strAttribute] = getFieldValue(strMapping, &request.CallMap)
