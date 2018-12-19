@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/xml"
 	"fmt"
+	"strconv"
 
 	"github.com/hornbill/goApiLib"
 )
@@ -21,7 +22,7 @@ func espLogger(message, severity string) {
 func doesAnalystExist(analystID string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) bool {
 	boolAnalystExists := false
 	if analystID != "" {
-		analystIsInCache, strReturn := recordInCache(analystID, "Analyst")
+		analystIsInCache, strReturn, _ := recordInCache(analystID, "Analyst")
 		//-- Check if we have cached the Analyst already
 		if analystIsInCache && strReturn != "" {
 			boolAnalystExists = true
@@ -31,18 +32,18 @@ func doesAnalystExist(analystID string, espXmlmc *apiLib.XmlmcInstStruct, buffer
 
 			XMLAnalystSearch, xmlmcErr := espXmlmc.Invoke("admin", "userGetInfo")
 			if xmlmcErr != nil {
-				buffer.WriteString(loggerGen(4, "API Call Failed: Search for Analyst ["+analystID+"]: "+fmt.Sprintf("%v", xmlmcErr)))
+				buffer.WriteString(loggerGen(4, "API Call Failed: Search for User ["+analystID+"]: "+fmt.Sprintf("%v", xmlmcErr)))
 			}
 
 			var xmlRespon xmlmcAnalystListResponse
 			err := xml.Unmarshal([]byte(XMLAnalystSearch), &xmlRespon)
 			if err != nil {
-				buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Search for Analyst ["+analystID+"]: "+fmt.Sprintf("%v", err)))
+				buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Search for User ["+analystID+"]: "+fmt.Sprintf("%v", err)))
 				return false
 			}
 			if xmlRespon.MethodResult != "ok" {
 				//Analyst most likely does not exist
-				buffer.WriteString(loggerGen(4, "MethodResult not OK: Search for Analyst ["+analystID+"]: "+xmlRespon.State.ErrorRet))
+				buffer.WriteString(loggerGen(4, "Search for User ["+analystID+"]: "+xmlRespon.State.ErrorRet))
 				return false
 			}
 			//-- Check Response
@@ -52,7 +53,7 @@ func doesAnalystExist(analystID string, espXmlmc *apiLib.XmlmcInstStruct, buffer
 				var newAnalystForCache analystListStruct
 				newAnalystForCache.AnalystID = analystID
 				newAnalystForCache.AnalystName = xmlRespon.AnalystFullName
-				buffer.WriteString(loggerGen(1, "Analyst Cached ["+analystID+"]: "+xmlRespon.AnalystFullName))
+				buffer.WriteString(loggerGen(1, "User Cached ["+analystID+"]: "+xmlRespon.AnalystFullName))
 				analystNamedMap := []analystListStruct{newAnalystForCache}
 				mutexAnalysts.Lock()
 				analysts = append(analysts, analystNamedMap...)
@@ -64,33 +65,42 @@ func doesAnalystExist(analystID string, espXmlmc *apiLib.XmlmcInstStruct, buffer
 }
 
 //doesCustomerExist takes a Customer ID string and returns a true if one exists in the cache or on the Instance
-func doesCustomerExist(customerID string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) bool {
+func doesContactExist(customerID string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) bool {
 	boolCustomerExists := false
 
 	if customerID != "" {
-		customerIsInCache, strReturn := recordInCache(customerID, "Customer")
+		customerIsInCache, strReturn, intReturn := recordInCache(customerID, "Customer")
 		//-- Check if we have cached the Analyst already
-		if customerIsInCache && strReturn != "" {
+		if customerIsInCache && strReturn != "" && intReturn > 0 {
 			boolCustomerExists = true
 		} else {
 			//Get Analyst Info
-			espXmlmc.SetParam("customerId", customerID)
-			espXmlmc.SetParam("customerType", importConf.CustomerType)
-			XMLCustomerSearch, xmlmcErr := espXmlmc.Invoke("apps/"+appServiceManager, "shrGetCustomerDetails")
+			espXmlmc.SetParam("entity", "Contact")
+			espXmlmc.SetParam("matchScope", "all")
+			espXmlmc.OpenElement("searchFilter")
+			espXmlmc.SetParam("column", "h_contact_status")
+			espXmlmc.SetParam("value", "0")
+			espXmlmc.CloseElement("searchFilter")
+			espXmlmc.OpenElement("searchFilter")
+			espXmlmc.SetParam("column", importConf.ContactKeyColumn)
+			espXmlmc.SetParam("value", customerID)
+			espXmlmc.CloseElement("searchFilter")
+
+			XMLCustomerSearch, xmlmcErr := espXmlmc.Invoke("data", "entityBrowseRecords2")
 			if xmlmcErr != nil {
-				buffer.WriteString(loggerGen(4, "API Call Failed: Search for Customer ["+customerID+"]: "+fmt.Sprintf("%v", xmlmcErr)))
+				buffer.WriteString(loggerGen(4, "API Call Failed: Search for Contact ["+customerID+"]: "+fmt.Sprintf("%v", xmlmcErr)))
 				return false
 			}
 
 			var xmlRespon xmlmcCustomerListResponse
 			err := xml.Unmarshal([]byte(XMLCustomerSearch), &xmlRespon)
 			if err != nil {
-				buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Search for Customer ["+customerID+"]: "+fmt.Sprintf("%v", err)))
+				buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Search for Contact ["+customerID+"]: "+fmt.Sprintf("%v", err)))
 				return false
 			}
 			if xmlRespon.MethodResult != "ok" {
 				//Customer most likely does not exist
-				buffer.WriteString(loggerGen(4, "MethodResult Not OK: Search for Customer ["+customerID+"]: "+xmlRespon.State.ErrorRet))
+				buffer.WriteString(loggerGen(4, "Search for Contact ["+customerID+"]: "+xmlRespon.State.ErrorRet))
 				return false
 			}
 			//-- Check Response
@@ -98,9 +108,10 @@ func doesCustomerExist(customerID string, espXmlmc *apiLib.XmlmcInstStruct, buff
 				boolCustomerExists = true
 				//-- Add Customer to Cache
 				var newCustomerForCache customerListStruct
-				newCustomerForCache.CustomerID = customerID
+				newCustomerForCache.CustomerLoginID = customerID
+				newCustomerForCache.CustomerID = xmlRespon.CustomerID
 				newCustomerForCache.CustomerName = xmlRespon.CustomerFirstName + " " + xmlRespon.CustomerLastName
-				buffer.WriteString(loggerGen(1, "Customer Cached ["+customerID+"]: "+newCustomerForCache.CustomerName))
+				buffer.WriteString(loggerGen(1, "Contact Cached ["+customerID+"]: ["+strconv.Itoa(xmlRespon.CustomerID)+"] "+newCustomerForCache.CustomerName))
 				customerNamedMap := []customerListStruct{newCustomerForCache}
 				mutexCustomers.Lock()
 				customers = append(customers, customerNamedMap...)

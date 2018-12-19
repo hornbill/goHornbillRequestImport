@@ -28,7 +28,7 @@ func getCallServiceID(swService string, espXmlmc *apiLib.XmlmcInstStruct, buffer
 func getServiceID(serviceName string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) string {
 	serviceID := ""
 	if serviceName != "" {
-		serviceIsInCache, ServiceIDCache := recordInCache(serviceName, "Service")
+		serviceIsInCache, ServiceIDCache, _ := recordInCache(serviceName, "Service")
 		//-- Check if we have cached the Service already
 		if serviceIsInCache {
 			serviceID = ServiceIDCache

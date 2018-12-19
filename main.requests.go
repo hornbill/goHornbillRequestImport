@@ -166,7 +166,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 				boolAnalystExists := doesAnalystExist(strOwnerID, espXmlmc, buffer)
 				if boolAnalystExists {
 					//Get analyst from cache as exists
-					analystIsInCache, strOwnerName := recordInCache(strOwnerID, "Analyst")
+					analystIsInCache, strOwnerName, _ := recordInCache(strOwnerID, "Analyst")
 					if analystIsInCache && strOwnerName != "" {
 						coreFields[strAttribute] = strOwnerID
 						coreFields["h_ownername"] = strOwnerName
@@ -180,13 +180,30 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 		if strAttribute == "h_fk_user_id" {
 			strCustID := getFieldValue(strMapping, &request.CallMap)
 			if strCustID != "" {
-				boolCustExists := doesCustomerExist(strCustID, espXmlmc, buffer)
-				if boolCustExists {
+
+				boolCustExists := false
+				if importConf.CustomerType == 0 || importConf.CustomerType == 2 {
+					//Check if customer is a User
+					boolCustExists = doesAnalystExist(strCustID, espXmlmc, buffer)
+					if boolCustExists {
+						//Get customer from user cache as exists
+						customerIsInCache, strCustName, _ := recordInCache(strCustID, "Analyst")
+						if customerIsInCache && strCustName != "" {
+							coreFields[strAttribute] = strCustID
+							coreFields["h_fk_user_name"] = strCustName
+							coreFields["h_customer_type"] = "0"
+						}
+					}
+				}
+				if !boolCustExists && (importConf.CustomerType == 1 || importConf.CustomerType == 2) {
+					//Check if customer is a Contact
+					boolCustExists = doesContactExist(strCustID, espXmlmc, buffer)
 					//Get customer from cache as exists
-					customerIsInCache, strCustName := recordInCache(strCustID, "Customer")
+					customerIsInCache, strCustName, intCustID := recordInCache(strCustID, "Customer")
 					if customerIsInCache && strCustName != "" {
-						coreFields[strAttribute] = strCustID
+						coreFields[strAttribute] = strconv.Itoa(intCustID)
 						coreFields["h_fk_user_name"] = strCustName
+						coreFields["h_customer_type"] = "1"
 					}
 				}
 			}

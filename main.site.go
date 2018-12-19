@@ -16,7 +16,7 @@ func getSiteID(callMap *map[string]interface{}, espXmlmc *apiLib.XmlmcInstStruct
 	siteNameMapping := fmt.Sprintf("%v", mapGenericConf.CoreFieldMapping["h_site_id"])
 	siteName := getFieldValue(siteNameMapping, callMap)
 	if siteName != "" {
-		siteIsInCache, SiteIDCache := recordInCache(siteName, "Site")
+		siteIsInCache, SiteIDCache, _ := recordInCache(siteName, "Site")
 		//-- Check if we have cached the site already
 		if siteIsInCache {
 			siteID = SiteIDCache

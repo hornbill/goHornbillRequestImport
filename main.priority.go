@@ -26,7 +26,7 @@ func getCallPriorityID(strPriorityName string, espXmlmc *apiLib.XmlmcInstStruct,
 func getPriorityID(priorityName string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) string {
 	priorityID := ""
 	if priorityName != "" {
-		priorityIsInCache, PriorityIDCache := recordInCache(priorityName, "Priority")
+		priorityIsInCache, PriorityIDCache, _ := recordInCache(priorityName, "Priority")
 		//-- Check if we have cached the Priority already
 		if priorityIsInCache {
 			priorityID = PriorityIDCache

@@ -16,6 +16,8 @@
     "Port": 5002,
     "Encrypt": false
   },
+  "CustomerType": 2,
+  "ContactKeyColumn":"h_logon_id",
   "RequestTypesToImport": 
   [
     {

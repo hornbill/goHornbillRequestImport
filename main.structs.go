@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	version           = "1.0.0"
+	version           = "1.1.0"
 	appServiceManager = "com.hornbill.servicemanager"
 )
 
@@ -70,7 +70,8 @@ type counterTypeStruct struct {
 //----- Config Data Structs
 type importConfStruct struct {
 	HBConf                    hbConfStruct //Hornbill Instance connection details
-	CustomerType              string
+	CustomerType              int
+	ContactKeyColumn          string
 	RelatedRequestQuery       string
 	AppDBConf                 appDBConfStruct //App Data (swdata) connection details
 	RequestTypesToImport      []reqestConfStruct
@@ -239,13 +240,15 @@ type xmlmcAnalystListResponse struct {
 
 //----- Customer Structs
 type customerListStruct struct {
-	CustomerID   string
-	CustomerName string
+	CustomerID      int
+	CustomerLoginID string
+	CustomerName    string
 }
 type xmlmcCustomerListResponse struct {
 	MethodResult      string      `xml:"status,attr"`
-	CustomerFirstName string      `xml:"params>firstName"`
-	CustomerLastName  string      `xml:"params>lastName"`
+	CustomerID        int         `xml:"params>rowData>row>h_pk_id"`
+	CustomerFirstName string      `xml:"params>rowData>row>h_firstname"`
+	CustomerLastName  string      `xml:"params>rowData>row>h_lastname"`
 	State             stateStruct `xml:"state"`
 }
 

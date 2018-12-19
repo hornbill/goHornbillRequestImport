@@ -26,7 +26,7 @@ func getCallTeamID(swTeamID string, espXmlmc *apiLib.XmlmcInstStruct, buffer *by
 func getTeamID(teamName string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) string {
 	teamID := ""
 	if teamName != "" {
-		teamIsInCache, TeamIDCache := recordInCache(teamName, "Team")
+		teamIsInCache, TeamIDCache, _ := recordInCache(teamName, "Team")
 		//-- Check if we have cached the Team already
 		if teamIsInCache {
 			teamID = TeamIDCache

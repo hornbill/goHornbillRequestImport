@@ -6,9 +6,10 @@ import (
 
 // recordInCache -- Function to check if passed-thorugh record name has been cached
 // if so, pass back the Record ID
-func recordInCache(recordName, recordType string) (bool, string) {
+func recordInCache(recordName, recordType string) (bool, string, int) {
 	boolReturn := false
 	strReturn := ""
+	intReturn := 0
 	switch recordType {
 	case "Service":
 		//-- Check if record in Service Cache
@@ -64,14 +65,15 @@ func recordInCache(recordName, recordType string) (bool, string) {
 		//-- Check if record in Customer Cache
 		mutexCustomers.Lock()
 		for _, customer := range customers {
-			if customer.CustomerID == recordName {
+			if customer.CustomerLoginID == recordName {
 				boolReturn = true
 				strReturn = customer.CustomerName
+				intReturn = customer.CustomerID
 			}
 		}
 		mutexCustomers.Unlock()
 	}
-	return boolReturn, strReturn
+	return boolReturn, strReturn, intReturn
 }
 
 // categoryInCache -- Function to check if passed-thorugh category been cached

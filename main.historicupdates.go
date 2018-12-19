@@ -71,7 +71,7 @@ func applyHistoricUpdate(diaryEntry map[string]interface{}, request *RequestDeta
 				boolAnalystExists := doesAnalystExist(strOwnerID, espXmlmc, buffer)
 				if boolAnalystExists {
 					//Get analyst from cache as exists
-					analystIsInCache, strOwnerName := recordInCache(strOwnerID, "Analyst")
+					analystIsInCache, strOwnerName, _ := recordInCache(strOwnerID, "Analyst")
 					if analystIsInCache && strOwnerName != "" {
 						coreFields[strAttribute] = strOwnerID
 						coreFields["h_updatebyname"] = strOwnerName
