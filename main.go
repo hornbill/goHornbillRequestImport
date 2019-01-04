@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/fatih/color"
@@ -18,11 +17,7 @@ import (
 func main() {
 	//-- Start Time for Durration
 	startTime = time.Now()
-	//-- Start Time for Log File
-	timeNow = time.Now().Format(time.RFC3339)
-	timeNow = strings.Replace(timeNow, ":", "-", -1)
-
-	localLogFileName += timeNow
+	localLogFileName = "request_import_" + time.Now().Format("20060102150405") + ".log"
 
 	parseFlags()
 

@@ -3,18 +3,15 @@ package main
 import (
 	"sync"
 	"time"
-
-	"github.com/hornbill/goApiLib"
 )
 
 const (
-	version           = "1.1.0"
+	version           = "1.2.0"
 	appServiceManager = "com.hornbill.servicemanager"
 )
 
 var (
-	localLogFileName     = "request_import"
-	espLogFileName       = "RequestImport"
+	localLogFileName     string
 	appDBDriver          string
 	arrSpawnBPMs         []spawnBPMStruct
 	boolConfLoaded       bool
@@ -22,14 +19,13 @@ var (
 	configDryRun         bool
 	configMaxRoutines    int
 	connStrAppDB         string
-	csvImport            = false
-	espXmlmc             *apiLib.XmlmcInstStruct
 	counters             counterTypeStruct
 	mapGenericConf       reqestConfStruct
 	analysts             []analystListStruct
 	categories           []categoryListStruct
 	closeCategories      []categoryListStruct
 	customers            []customerListStruct
+	requests             []requestListStruct
 	priorities           []priorityListStruct
 	services             []serviceListStruct
 	sites                []siteListStruct
@@ -40,7 +36,6 @@ var (
 	startTime            time.Time
 	endTime              time.Duration
 	wg                   sync.WaitGroup
-	mutex                = &sync.Mutex{}
 	bufferMutex          = &sync.Mutex{}
 	mutexAnalysts        = &sync.Mutex{}
 	mutexBar             = &sync.Mutex{}
@@ -52,6 +47,7 @@ var (
 	mutexServices        = &sync.Mutex{}
 	mutexSites           = &sync.Mutex{}
 	mutexTeams           = &sync.Mutex{}
+	mutexRequests        = &sync.Mutex{}
 	reqPrefix            string
 )
 
@@ -72,6 +68,7 @@ type importConfStruct struct {
 	HBConf                    hbConfStruct //Hornbill Instance connection details
 	CustomerType              int
 	ContactKeyColumn          string
+	DateTimeFormat            string
 	RelatedRequestQuery       string
 	AppDBConf                 appDBConfStruct //App Data (swdata) connection details
 	RequestTypesToImport      []reqestConfStruct
@@ -244,18 +241,15 @@ type customerListStruct struct {
 	CustomerLoginID string
 	CustomerName    string
 }
+type requestListStruct struct {
+	RequestID string
+}
 type xmlmcCustomerListResponse struct {
 	MethodResult      string      `xml:"status,attr"`
 	CustomerID        int         `xml:"params>rowData>row>h_pk_id"`
 	CustomerFirstName string      `xml:"params>rowData>row>h_firstname"`
 	CustomerLastName  string      `xml:"params>rowData>row>h_lastname"`
 	State             stateStruct `xml:"state"`
-}
-
-//----- Associated Record Struct
-type reqRelStruct struct {
-	MasterRef string `db:"parentRequest"`
-	SlaveRef  string `db:"childRequest"`
 }
 
 //RequestDetails struct for chan
@@ -266,10 +260,4 @@ type RequestDetails struct {
 	AppRequestGUID    string
 	SMRequestRef      string
 	GenericImportConf reqestConfStruct
-}
-
-//RequestReferences struct for chan
-type RequestReferences struct {
-	HornbillRequestRef string
-	AppRequestRef      string
 }

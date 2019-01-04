@@ -89,7 +89,7 @@ func applyHistoricUpdate(diaryEntry map[string]interface{}, request *RequestDeta
 				coreFields[strAttribute] = strTeamID
 			}
 		} else if strAttribute == "h_updatedate" && strMapping != "" {
-			strUpdateDate := parseDateTime(getFieldValue(strMapping, &diaryEntry))
+			strUpdateDate := parseDateTime(getFieldValue(strMapping, &diaryEntry), strAttribute, buffer)
 			if strUpdateDate != "" {
 				coreFields[strAttribute] = strUpdateDate
 			}
@@ -112,7 +112,7 @@ func applyHistoricUpdate(diaryEntry map[string]interface{}, request *RequestDeta
 	espXmlmc.CloseElement("primaryEntityData")
 	XMLSTRING := espXmlmc.GetParam()
 	//-- Check for Dry Run
-	if configDryRun != true {
+	if !configDryRun {
 		XMLUpdate, xmlmcErr := espXmlmc.Invoke("data", "entityAddRecord")
 		if xmlmcErr != nil {
 			buffer.WriteString(loggerGen(4, "API Invoke Failed Unable to add Historical Call Diary Update: "+fmt.Sprintf("%v", xmlmcErr)))
@@ -152,5 +152,4 @@ func applyHistoricUpdate(diaryEntry map[string]interface{}, request *RequestDeta
 	mutexCounters.Lock()
 	counters.historicUpdated++
 	mutexCounters.Unlock()
-	return
 }

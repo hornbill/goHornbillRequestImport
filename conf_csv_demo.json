@@ -18,6 +18,7 @@
   },
   "CustomerType": 2,
   "ContactKeyColumn":"h_logon_id",
+  "DateTimeFormat":"2006-01-02 15:04:05",
   "RequestTypesToImport": 
   [
     {

@@ -87,9 +87,23 @@ func queryDBCallDetails(serviceManagerRequestType, appRequestType, connString st
 	//Build map full of calls to import
 	intCallCount := 0
 	for rows.Next() {
-		intCallCount++
+
 		results := make(map[string]interface{})
 		err = rows.MapScan(results)
+
+		s := fmt.Sprintf("%+s", results[mapGenericConf.RequestReferenceColumn])
+
+		requestIsInCache, _, _ := recordInCache(s, "Request")
+		if requestIsInCache {
+			continue
+		}
+		mutexRequests.Lock()
+		var r requestListStruct
+		r.RequestID = s
+		requests = append(requests, r)
+		mutexRequests.Unlock()
+		intCallCount++
+
 		if err != nil {
 			//something is wrong with this row just log then skip it
 			logger(4, " Database Result error"+err.Error(), true)

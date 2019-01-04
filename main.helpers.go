@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"flag"
@@ -111,16 +112,16 @@ func logger(t int, s string, outputToCLI bool) {
 	hornbillHelpers.Logger(t, s, outputToCLI, localLogFileName)
 }
 
-func parseDateTime(dateTime string) string {
-	layout := "2006-01-02 15:04:05"
-	t, err := time.Parse(layout, dateTime)
-	if err != nil && dateTime != "" {
-		//return first 19 chars of string
-		dateString := dateTime[0:18]
-		return dateString
-
+func parseDateTime(dateTime, attribName string, buffer *bytes.Buffer) string {
+	if importConf.DateTimeFormat != "" && dateTime != "" {
+		t, err := time.Parse(importConf.DateTimeFormat, dateTime)
+		if err != nil {
+			buffer.WriteString(loggerGen(4, "parseDateTime Failed for ["+attribName+"]: "+fmt.Sprintf("%v", err)))
+			buffer.WriteString(loggerGen(1, "[DATETIME] Failed to parse DateTime stamp "+dateTime+" against configuration DateTimeFormat "+importConf.DateTimeFormat))
+		}
+		return t.Format("2006-01-02 15:04:05")
 	}
-	return fmt.Sprintf("%s", t)
+	return ""
 }
 
 func loggerGen(t int, s string) string {

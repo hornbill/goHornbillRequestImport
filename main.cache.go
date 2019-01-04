@@ -72,6 +72,17 @@ func recordInCache(recordName, recordType string) (bool, string, int) {
 			}
 		}
 		mutexCustomers.Unlock()
+	case "Request":
+		//-- Check if record in Customer Cache
+		mutexRequests.Lock()
+		for _, request := range requests {
+			if request.RequestID == recordName {
+				boolReturn = true
+				strReturn = request.RequestID
+				intReturn = 0
+			}
+		}
+		mutexRequests.Unlock()
 	}
 	return boolReturn, strReturn, intReturn
 }

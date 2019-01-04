@@ -9,15 +9,6 @@ import (
 	"github.com/hornbill/goApiLib"
 )
 
-// espLogger -- Log to ESP
-func espLogger(message, severity string) {
-	espXmlmc.SetParam("fileName", espLogFileName)
-	espXmlmc.SetParam("group", "general")
-	espXmlmc.SetParam("severity", severity)
-	espXmlmc.SetParam("message", message)
-	espXmlmc.Invoke("system", "logMessage")
-}
-
 //doesAnalystExist takes an Analyst ID string and returns a true if one exists in the cache or on the Instance
 func doesAnalystExist(analystID string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) bool {
 	boolAnalystExists := false

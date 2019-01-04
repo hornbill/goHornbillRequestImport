@@ -197,7 +197,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 				}
 				if !boolCustExists && (importConf.CustomerType == 1 || importConf.CustomerType == 2) {
 					//Check if customer is a Contact
-					boolCustExists = doesContactExist(strCustID, espXmlmc, buffer)
+					_ = doesContactExist(strCustID, espXmlmc, buffer)
 					//Get customer from cache as exists
 					customerIsInCache, strCustName, intCustID := recordInCache(strCustID, "Customer")
 					if customerIsInCache && strCustName != "" {
@@ -216,7 +216,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 			strPriorityID := getFieldValue(strMapping, &request.CallMap)
 			strPriorityMapped, strPriorityName := getCallPriorityID(strPriorityID, espXmlmc, buffer)
 			if strPriorityMapped == "" && mapGenericConf.DefaultPriority != "" {
-				strPriorityID = getPriorityID(mapGenericConf.DefaultPriority, espXmlmc, buffer)
+				strPriorityMapped = getPriorityID(mapGenericConf.DefaultPriority, espXmlmc, buffer)
 				strPriorityName = mapGenericConf.DefaultPriority
 			}
 			coreFields[strAttribute] = strPriorityMapped
@@ -315,16 +315,16 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 		if strAttribute == "h_dateresolved" && strMapping != "" && (strStatus == "status.resolved" || strStatus == "status.closed") {
 			strResolvedDate := getFieldValue(strMapping, &request.CallMap)
 			if strResolvedDate != "" {
-				coreFields[strAttribute] = parseDateTime(strResolvedDate)
+				coreFields[strAttribute] = parseDateTime(strResolvedDate, strAttribute, buffer)
 			}
 		}
 
 		// Closed Date/Time
 		if strAttribute == "h_dateclosed" && strMapping != "" {
 
-			strClosedDate = parseDateTime(getFieldValue(strMapping, &request.CallMap))
+			strClosedDate = parseDateTime(getFieldValue(strMapping, &request.CallMap), strAttribute, buffer)
 			if strClosedDate != "" && strStatus != "status.onHold" {
-				coreFields[strAttribute] = parseDateTime(strClosedDate)
+				coreFields[strAttribute] = parseDateTime(strClosedDate, strAttribute, buffer)
 			}
 		}
 
@@ -340,7 +340,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 
 		// Log Date/Time - setup ready to be processed after call logged
 		if strAttribute == "h_datelogged" && strMapping != "" {
-			strLoggedDate = parseDateTime(getFieldValue(strMapping, &request.CallMap))
+			strLoggedDate = parseDateTime(getFieldValue(strMapping, &request.CallMap), strAttribute, buffer)
 
 			if strLoggedDate != "" {
 				boolUpdateLogDate = true
@@ -533,7 +533,6 @@ func holdRequest(newCallRef, holdDate string, espXmlmc *apiLib.XmlmcInstStruct, 
 		return
 	}
 	buffer.WriteString(loggerGen(1, "Request On-Hold Success"))
-	return
 }
 
 func spawnBPM(jobs chan spawnBPMStruct, wg *sync.WaitGroup, espXmlmc *apiLib.XmlmcInstStruct) {
@@ -609,7 +608,6 @@ func updateRequestBpm(newCallRef, bpmID string, espXmlmc *apiLib.XmlmcInstStruct
 	mutexCounters.Lock()
 	counters.bpmRequest++
 	mutexCounters.Unlock()
-	return
 }
 
 func updateLogDate(newCallRef, logDate string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
@@ -637,7 +635,6 @@ func updateLogDate(newCallRef, logDate string, espXmlmc *apiLib.XmlmcInstStruct,
 		return
 	}
 	buffer.WriteString(loggerGen(1, "Request Log Date Update Successful"))
-	return
 }
 
 func createActivityStream(newCallRef string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
@@ -663,5 +660,4 @@ func createActivityStream(newCallRef string, espXmlmc *apiLib.XmlmcInstStruct, b
 	}
 
 	buffer.WriteString(loggerGen(1, "Activity Stream Creation Successful"))
-	return
 }
