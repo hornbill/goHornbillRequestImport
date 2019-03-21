@@ -26,9 +26,9 @@ do
     os=${split[0]}
     goarch=${split[1]}
     arch=${split[1]}
-    output=hornbillCleaner
-    package=goHornbillCleaner
-    
+    output=goHornbillRequestImport
+    package=goHornbillRequestImport
+
     # add exe to windows output
     [[ "windows" == "$goos" ]] && output="$output.exe"
     [[ "windows" == "$goos" ]] && os="win"
