@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hornbill/goHornbillHelpers"
+	hornbillHelpers "github.com/hornbill/goHornbillHelpers"
 )
 
 //loadConfig -- Function to Load Configruation File
@@ -64,6 +64,7 @@ func convExtendedColName(oldColName string) string {
 func parseFlags() {
 	flag.StringVar(&configFileName, "file", "conf.json", "Name of the configuration file to load")
 	flag.BoolVar(&configDryRun, "dryrun", false, "Dump import XML to log instead of creating requests")
+	flag.BoolVar(&configVersion, "version", false, "Outputs version number and exits tool")
 	flag.Parse()
 }
 

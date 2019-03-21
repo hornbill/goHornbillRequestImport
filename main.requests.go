@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hornbill/goApiLib"
+	apiLib "github.com/hornbill/goApiLib"
 	"github.com/hornbill/pb"
 )
 
@@ -162,10 +162,24 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 		//Owning Analyst Name
 		if strAttribute == "h_ownerid" {
 			strOwnerID := getFieldValue(strMapping, &request.CallMap)
+			strOwnerName := ""
 			if strOwnerID != "" {
 				boolAnalystExists := doesAnalystExist(strOwnerID, espXmlmc, buffer)
 				if boolAnalystExists {
 					//Get analyst from cache as exists
+					analystIsInCache, strOwnerName, _ := recordInCache(strOwnerID, "Analyst")
+					if analystIsInCache && strOwnerName != "" {
+						coreFields[strAttribute] = strOwnerID
+						coreFields["h_ownername"] = strOwnerName
+					}
+				}
+			}
+
+			if strOwnerName == "" && mapGenericConf.DefaultOwner != "" {
+				strOwnerID = mapGenericConf.DefaultOwner
+				boolAnalystExists := doesAnalystExist(strOwnerID, espXmlmc, buffer)
+				if boolAnalystExists {
+					//Get customer from user cache as exists
 					analystIsInCache, strOwnerName, _ := recordInCache(strOwnerID, "Analyst")
 					if analystIsInCache && strOwnerName != "" {
 						coreFields[strAttribute] = strOwnerID
@@ -248,37 +262,91 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 		// Service ID & Name, & BPM Workflow
 		if strAttribute == "h_fk_serviceid" {
 			//-- Get Service ID
-			swServiceID := getFieldValue(strMapping, &request.CallMap)
-			strServiceID := getCallServiceID(swServiceID, espXmlmc, buffer)
+			appServiceID := getFieldValue(strMapping, &request.CallMap)
+			strServiceID := getCallServiceID(appServiceID, espXmlmc, buffer)
+			useDefaultService := false
 			if strServiceID == "" && mapGenericConf.DefaultService != "" {
+				useDefaultService = true
 				strServiceID = getServiceID(mapGenericConf.DefaultService, espXmlmc, buffer)
 			}
 			if strServiceID != "" {
 				//-- Get record from Service Cache
 				strServiceName := ""
+				strCatalogName := ""
+				strCatalogID := ""
+
 				mutexServices.Lock()
 				for _, service := range services {
 					if strconv.Itoa(service.ServiceID) == strServiceID {
 						strServiceName = service.ServiceName
-						switch request.GenericImportConf.ServiceManagerRequestType {
-						case "Incident":
-							strServiceBPM = service.ServiceBPMIncident
-						case "Service Request":
-							strServiceBPM = service.ServiceBPMService
-						case "Change Request":
-							strServiceBPM = service.ServiceBPMChange
-						case "Problem":
-							strServiceBPM = service.ServiceBPMProblem
-						case "Known Error":
-							strServiceBPM = service.ServiceBPMKnownError
+
+						if useDefaultService && request.GenericImportConf.DefaultCatalog != 0 {
+							//Default Catalog match?
+							for _, catalog := range service.CatalogItems {
+								if catalog.CatalogItemID == request.GenericImportConf.DefaultCatalog &&
+									catalog.Status == "publish" &&
+									catalog.RequestType == request.GenericImportConf.ServiceManagerRequestType {
+									strCatalogID = strconv.Itoa(catalog.CatalogItemID)
+									strCatalogName = catalog.CatalogItemName
+									strServiceBPM = catalog.BPM
+								}
+							}
+						} else {
+							//Check catalog match
+							if strCatalogNameMapping, ok := mapGenericConf.CoreFieldMapping["h_catalog_id"]; ok {
+								appCatalogID := getFieldValue(fmt.Sprintf("%s", strCatalogNameMapping), &request.CallMap)
+								if importConf.ServiceCatalogItemMapping[appCatalogID] != 0 {
+									for _, catalog := range service.CatalogItems {
+										if catalog.CatalogItemID == importConf.ServiceCatalogItemMapping[appCatalogID] &&
+											catalog.Status == "publish" &&
+											catalog.RequestType == request.GenericImportConf.ServiceManagerRequestType {
+											strCatalogID = strconv.Itoa(catalog.CatalogItemID)
+											strCatalogName = catalog.CatalogItemName
+											strServiceBPM = catalog.BPM
+										}
+									}
+								}
+							}
+						}
+
+						if strServiceBPM == "" {
+							switch request.GenericImportConf.ServiceManagerRequestType {
+							case "Incident":
+								strServiceBPM = service.ServiceBPMIncident
+							case "Service Request":
+								strServiceBPM = service.ServiceBPMService
+							case "Change Request":
+								strServiceBPM = service.ServiceBPMChange
+							case "Problem":
+								strServiceBPM = service.ServiceBPMProblem
+							case "Known Error":
+								strServiceBPM = service.ServiceBPMKnownError
+							case "Release":
+								strServiceBPM = service.ServiceBPMRelease
+							}
 						}
 					}
 				}
 				mutexServices.Unlock()
 
 				if strServiceName != "" {
+					buffer.WriteString(loggerGen(1, "Using Service ID "+strServiceID+" ["+strServiceName+"]"))
 					coreFields[strAttribute] = strServiceID
 					coreFields["h_fk_servicename"] = strServiceName
+				} else {
+					buffer.WriteString(loggerGen(1, "No matching Service found."))
+				}
+				if strCatalogName != "" {
+					buffer.WriteString(loggerGen(1, "Using Catalog ID "+strCatalogID+" ["+strCatalogName+"]"))
+					coreFields["h_catalog"] = strCatalogName
+					coreFields["h_catalog_id"] = strCatalogID
+				} else {
+					buffer.WriteString(loggerGen(1, "No matching Catalog Item found."))
+				}
+				if strServiceBPM != "" {
+					buffer.WriteString(loggerGen(1, "Using BPM "+strServiceBPM))
+				} else {
+					buffer.WriteString(loggerGen(1, "No matching BPM found."))
 				}
 			}
 			boolAutoProcess = false
@@ -287,8 +355,8 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 		// Team ID and Name
 		if strAttribute == "h_fk_team_id" {
 			//-- Get Team ID
-			swTeamID := getFieldValue(strMapping, &request.CallMap)
-			strTeamID, strTeamName := getCallTeamID(swTeamID, espXmlmc, buffer)
+			appTeamID := getFieldValue(strMapping, &request.CallMap)
+			strTeamID, strTeamName := getCallTeamID(appTeamID, espXmlmc, buffer)
 			if strTeamID == "" && mapGenericConf.DefaultTeam != "" {
 				strTeamName = mapGenericConf.DefaultTeam
 				strTeamID = getTeamID(strTeamName, espXmlmc, buffer)
@@ -355,6 +423,9 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 			strAttribute != "h_category" &&
 			strAttribute != "h_closure_category" &&
 			strAttribute != "h_fk_servicename" &&
+			strAttribute != "h_fk_serviceid" &&
+			strAttribute != "h_catalog_id" &&
+			strAttribute != "h_catalog" &&
 			strAttribute != "h_fk_team_name" &&
 			strAttribute != "h_site" &&
 			strAttribute != "h_fk_priorityname" &&

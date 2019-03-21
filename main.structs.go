@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	version           = "1.2.0"
+	version           = "1.3.0"
 	appServiceManager = "com.hornbill.servicemanager"
 )
 
@@ -18,6 +18,7 @@ var (
 	configFileName       string
 	configDryRun         bool
 	configMaxRoutines    int
+	configVersion        bool
 	connStrAppDB         string
 	counters             counterTypeStruct
 	mapGenericConf       reqestConfStruct
@@ -77,6 +78,7 @@ type importConfStruct struct {
 	CategoryMapping           map[string]interface{}
 	ResolutionCategoryMapping map[string]interface{}
 	ServiceMapping            map[string]interface{}
+	ServiceCatalogItemMapping map[string]int
 	StatusMapping             map[string]interface{}
 }
 type hbConfStruct struct {
@@ -104,7 +106,9 @@ type reqestConfStruct struct {
 	CoreFieldMapping           map[string]interface{}
 	DefaultPriority            string
 	DefaultService             string
+	DefaultCatalog             int
 	DefaultTeam                string
+	DefaultOwner               string
 	Description                string
 	HistoricUpdateMapping      map[string]interface{}
 	Import                     bool
@@ -184,17 +188,36 @@ type serviceListStruct struct {
 	ServiceBPMChange     string
 	ServiceBPMProblem    string
 	ServiceBPMKnownError string
+	ServiceBPMRelease    string
+	CatalogItems         []catalogItemListStruct
 }
+
+type catalogItemListStruct struct {
+	CatalogItemName string `xml:"catalog_title"`
+	CatalogItemID   int    `xml:"h_id"`
+	RequestType     string `xml:"h_request_type"`
+	BPM             string `xml:"h_bpm"`
+	Status          string `xml:"h_status"`
+}
+
 type xmlmcServiceListResponse struct {
 	MethodResult  string      `xml:"status,attr"`
-	ServiceID     int         `xml:"params>rowData>row>h_pk_serviceid"`
+	ServiceID     int         `xml:"params>rowData>row>h_linked_service_id"`
 	ServiceName   string      `xml:"params>rowData>row>h_servicename"`
 	BPMIncident   string      `xml:"params>rowData>row>h_incident_bpm_name"`
 	BPMService    string      `xml:"params>rowData>row>h_service_bpm_name"`
 	BPMChange     string      `xml:"params>rowData>row>h_change_bpm_name"`
 	BPMProblem    string      `xml:"params>rowData>row>h_problem_bpm_name"`
 	BPMKnownError string      `xml:"params>rowData>row>h_knownerror_bpm_name"`
+	BPMRelease    string      `xml:"params>rowData>row>h_release_bpm_name"`
 	State         stateStruct `xml:"state"`
+}
+
+type xmlmcCatalogItemListResponse struct {
+	MethodResult string                  `xml:"status,attr"`
+	CatalogItems []catalogItemListStruct `xml:"params>rowData>row"`
+	FoundRows    int                     `xml:"params>foundRows"`
+	State        stateStruct             `xml:"state"`
 }
 
 //----- Team Structs

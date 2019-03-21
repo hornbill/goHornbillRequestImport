@@ -10,7 +10,7 @@ import (
 	_ "github.com/alexbrainman/odbc"     //ODBC Driver
 	_ "github.com/denisenkom/go-mssqldb" //Microsoft SQL Server driver - v2005+
 	_ "github.com/go-sql-driver/mysql"   //MySQL v4.1 to v5.x and MariaDB driver
-	_ "github.com/weave-lab/mysql320"    //MySQL v3.2.0 to v5 driver - Provides SWSQL (MySQL 4.0.16) support
+	_ "github.com/hornbill/mysql320"     //MySQL v3.2.0 to v5 driver - Provides SWSQL (MySQL 4.0.16) support
 )
 
 // main package
@@ -20,7 +20,11 @@ func main() {
 	localLogFileName = "request_import_" + time.Now().Format("20060102150405") + ".log"
 
 	parseFlags()
-
+	//-- If configVersion just output version number and die
+	if configVersion {
+		fmt.Printf("%v \n", version)
+		return
+	}
 	//-- Output to CLI and Log
 	logger(1, "---- Hornbill Service Manager Request Import Utility V"+fmt.Sprintf("%v", version)+" ----", true)
 	logger(1, "Flag - Config File "+configFileName, true)

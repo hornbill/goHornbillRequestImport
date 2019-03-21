@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hornbill/goApiLib"
+	apiLib "github.com/hornbill/goApiLib"
 )
 
 //getCallServiceID takes the Call Record and returns a correct Service ID if one exists on the Instance
@@ -52,11 +52,13 @@ func searchService(serviceName string, espXmlmc *apiLib.XmlmcInstStruct, buffer 
 	espXmlmc.SetParam("entity", "Services")
 	espXmlmc.SetParam("matchScope", "all")
 	espXmlmc.OpenElement("searchFilter")
-	espXmlmc.SetParam("h_servicename", serviceName)
+	espXmlmc.SetParam("column", "h_servicename")
+	espXmlmc.SetParam("value", serviceName)
+	espXmlmc.SetParam("matchType", "exact")
 	espXmlmc.CloseElement("searchFilter")
 	espXmlmc.SetParam("maxResults", "1")
 
-	XMLServiceSearch, xmlmcErr := espXmlmc.Invoke("data", "entityBrowseRecords")
+	XMLServiceSearch, xmlmcErr := espXmlmc.Invoke("data", "entityBrowseRecords2")
 	if xmlmcErr != nil {
 		buffer.WriteString(loggerGen(4, "API Call Failed: Search Service ["+serviceName+"]: "+fmt.Sprintf("%v", xmlmcErr)))
 		return boolReturn, intReturn
@@ -86,6 +88,8 @@ func searchService(serviceName string, espXmlmc *apiLib.XmlmcInstStruct, buffer 
 			newServiceForCache.ServiceBPMChange = xmlRespon.BPMChange
 			newServiceForCache.ServiceBPMProblem = xmlRespon.BPMProblem
 			newServiceForCache.ServiceBPMKnownError = xmlRespon.BPMKnownError
+			newServiceForCache.ServiceBPMRelease = xmlRespon.BPMRelease
+			newServiceForCache.CatalogItems = getCatalogItems(intReturn, espXmlmc, buffer)
 			serviceNamedMap := []serviceListStruct{newServiceForCache}
 			mutexServices.Lock()
 			services = append(services, serviceNamedMap...)
@@ -96,4 +100,62 @@ func searchService(serviceName string, espXmlmc *apiLib.XmlmcInstStruct, buffer 
 
 	//Return Service ID once cached - we can now use this in the calling function to get all details from cache
 	return boolReturn, intReturn
+}
+
+func getCatalogItems(serviceID int, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) []catalogItemListStruct {
+	//pagination support
+	returnTotalRows := 100
+	rowStart := 0
+
+	//get first page & total count
+	page, count := getPageCatalogItems(serviceID, returnTotalRows, rowStart, espXmlmc, buffer)
+	if len(page) == count || count == 0 {
+		return page
+	}
+	//Count bigger than page, go through the rest
+	catalogItems := page
+	x := len(catalogItems)
+
+	for x < count {
+		nextPage, totalItems := getPageCatalogItems(serviceID, returnTotalRows, x, espXmlmc, buffer)
+		if totalItems == 0 {
+			break
+		}
+		catalogItems = append(catalogItems, nextPage...)
+		x = len(catalogItems)
+	}
+	return catalogItems
+}
+
+func getPageCatalogItems(serviceID, limit, rowStart int, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) ([]catalogItemListStruct, int) {
+	var foundCatalogItems []catalogItemListStruct
+	intReturn := 0
+	espXmlmc.SetParam("application", "com.hornbill.servicemanager")
+	espXmlmc.SetParam("queryName", "getCatalogs")
+	espXmlmc.SetParam("returnFoundRowCount", "true")
+	espXmlmc.OpenElement("queryParams")
+	espXmlmc.SetParam("language", "default")
+	espXmlmc.SetParam("serviceId", strconv.Itoa(serviceID))
+	espXmlmc.SetParam("rowStart", strconv.Itoa(rowStart))
+	espXmlmc.SetParam("limit", strconv.Itoa(limit))
+	espXmlmc.CloseElement("queryParams")
+	XMLServiceSearch, xmlmcErr := espXmlmc.Invoke("data", "queryExec")
+	if xmlmcErr != nil {
+		buffer.WriteString(loggerGen(4, "API Call Failed: Search Catalog Items for Service ID ["+strconv.Itoa(serviceID)+"]: "+fmt.Sprintf("%v", xmlmcErr)))
+		return foundCatalogItems, intReturn
+	}
+	var xmlRespon xmlmcCatalogItemListResponse
+	err := xml.Unmarshal([]byte(XMLServiceSearch), &xmlRespon)
+	if err != nil {
+		buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Search Catalog Items for Service ID ["+strconv.Itoa(serviceID)+"]: "+fmt.Sprintf("%v", err)))
+		return foundCatalogItems, intReturn
+	}
+	if xmlRespon.MethodResult != "ok" {
+		buffer.WriteString(loggerGen(5, "MethodResult Not OK: Search Catalog Items for Service ID ["+strconv.Itoa(serviceID)+"]: "+xmlRespon.State.ErrorRet))
+		return foundCatalogItems, intReturn
+	}
+	//-- Check Response
+	foundCatalogItems = xmlRespon.CatalogItems
+	intReturn = xmlRespon.FoundRows
+	return foundCatalogItems, intReturn
 }

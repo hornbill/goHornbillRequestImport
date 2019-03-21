@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hornbill/goApiLib"
+	apiLib "github.com/hornbill/goApiLib"
 )
 
 //getCallPriorityID takes the Call Record and returns a correct Priority ID if one exists on the Instance
@@ -45,17 +45,17 @@ func getPriorityID(priorityName string, espXmlmc *apiLib.XmlmcInstStruct, buffer
 func searchPriority(priorityName string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) (bool, int) {
 	boolReturn := false
 	intReturn := 0
-
 	//-- ESP Query for Priority
 	espXmlmc.SetParam("application", appServiceManager)
 	espXmlmc.SetParam("entity", "Priority")
 	espXmlmc.SetParam("matchScope", "all")
 	espXmlmc.OpenElement("searchFilter")
-	espXmlmc.SetParam("h_priorityname", priorityName)
+	espXmlmc.SetParam("column", "h_priorityname")
+	espXmlmc.SetParam("value", priorityName)
+	espXmlmc.SetParam("matchType", "exact")
 	espXmlmc.CloseElement("searchFilter")
-	espXmlmc.SetParam("maxResults", "1")
 
-	XMLPrioritySearch, xmlmcErr := espXmlmc.Invoke("data", "entityBrowseRecords")
+	XMLPrioritySearch, xmlmcErr := espXmlmc.Invoke("data", "entityBrowseRecords2")
 	if xmlmcErr != nil {
 		buffer.WriteString(loggerGen(4, "API Call Failed: Search Priority: "+fmt.Sprintf("%v", xmlmcErr)))
 		return boolReturn, intReturn
@@ -88,6 +88,5 @@ func searchPriority(priorityName string, espXmlmc *apiLib.XmlmcInstStruct, buffe
 			mutexPriorities.Unlock()
 		}
 	}
-
 	return boolReturn, intReturn
 }

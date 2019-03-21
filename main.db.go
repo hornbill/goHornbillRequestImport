@@ -106,7 +106,7 @@ func queryDBCallDetails(serviceManagerRequestType, appRequestType, connString st
 
 		if err != nil {
 			//something is wrong with this row just log then skip it
-			logger(4, " Database Result error"+err.Error(), true)
+			logger(4, " Database Result error: "+err.Error(), true)
 			continue
 		}
 		//Stick marshalled data map in to parent slice

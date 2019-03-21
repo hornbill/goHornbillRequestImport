@@ -26,9 +26,11 @@
       "Import":true,
       "ServiceManagerRequestType": "Incident",
       "AppRequestType":"Incident",
-      "DefaultTeam":"Service Desk",
-      "DefaultPriority":"Low",
-      "DefaultService":"Communications",
+      "DefaultTeam": "Service Desk",
+      "DefaultOwner": "ownerid",
+      "DefaultPriority": "Low",
+      "DefaultService": "Communications",
+      "DefaultCatalog": 3,
       "RequestQuery":"SELECT * FROM requestImport.csv WHERE REQUESTTYPE = 'Incident'",
       "RequestReferenceColumn":"CALLREFERENCE",
       "RequestGUID":"CALLREFERENCE",
@@ -117,9 +119,11 @@
       "Import":true,
       "ServiceManagerRequestType": "Service Request",
       "AppRequestType":"Service Request",
-      "DefaultTeam":"Service Desk",
-      "DefaultPriority":"Low",
-      "DefaultService":"Communications",
+      "DefaultTeam": "Service Desk",
+      "DefaultOwner": "ownerid",
+      "DefaultPriority": "Low",
+      "DefaultService": "Communications",
+      "DefaultCatalog": 5,
       "RequestQuery":"SELECT * FROM requestImport.csv WHERE REQUESTTYPE = 'Service Request'",
       "RequestReferenceColumn":"CALLREFERENCE",
       "RequestGUID":"CALLREFERENCE",
@@ -200,34 +204,37 @@
     }
   ],
   "PriorityMapping": {
-    "External Priority":"Service Manager Priority"
+    "External Priority": "Service Manager Priority"
   },
   "TeamMapping": {
-    "External Team ID":"Service Manager Team Name"
+    "External Team ID": "Service Manager Team Name"
   },
   "CategoryMapping": {
-    "External Category":"Service Manager Category ID"
+    "External Category": "Service Manager Category ID"
   },
   "ResolutionCategoryMapping": {
-    "External Resolution Profile Code":"Service Manager Resolution Profile Code"
+    "External Resolution Profile Code": "Service Manager Resolution Profile Code"
   },
   "ServiceMapping": {
-    "External Service Name":"Service Manager Service Name"
+    "External Service Name": "Service Manager Service Name"
   },
-  "StatusMapping":{
-    "External Status":"Service Manager Status",
-    "1" : "status.open",
-    "2" : "status.open",
-    "3" : "status.open",
-    "4" : "status.onHold",
-    "5" : "status.open",
-    "6" : "status.resolved",
-    "8" : "status.new",
-    "9" : "status.open",
-    "10" : "status.open",
-    "11" : "status.open",
-    "16" : "status.closed",
-    "17" : "status.cancelled",
-    "18" : "status.closed"
+  "ServiceCatalogItemMapping": {
+    "External Service Catalog Item Name": 1
+  },
+  "StatusMapping": {
+    "External Status": "Service Manager Status",
+    "1": "status.open",
+    "2": "status.open",
+    "3": "status.open",
+    "4": "status.onHold",
+    "5": "status.open",
+    "6": "status.resolved",
+    "8": "status.new",
+    "9": "status.open",
+    "10": "status.open",
+    "11": "status.open",
+    "16": "status.closed",
+    "17": "status.cancelled",
+    "18": "status.closed"
   }
 }
