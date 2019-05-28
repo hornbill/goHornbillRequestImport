@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.3.1 (May 28th 2019)
+
+### Defect Fix
+
+- Fixed duplicate parsing of h_dateclosed field mapping
+
 ## 1.3.0 (March 21st 2019)
 
 ### Features

@@ -389,10 +389,12 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 
 		// Closed Date/Time
 		if strAttribute == "h_dateclosed" && strMapping != "" {
-
-			strClosedDate = parseDateTime(getFieldValue(strMapping, &request.CallMap), strAttribute, buffer)
+			strClosedDate = getFieldValue(strMapping, &request.CallMap)
 			if strClosedDate != "" && strStatus != "status.onHold" {
 				coreFields[strAttribute] = parseDateTime(strClosedDate, strAttribute, buffer)
+			}
+			if strClosedDate != "" && strStatus == "status.onHold" {
+				strClosedDate = parseDateTime(strClosedDate, strAttribute, buffer)
 			}
 		}
 
