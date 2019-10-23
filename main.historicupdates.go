@@ -77,16 +77,6 @@ func applyHistoricUpdate(diaryEntry map[string]interface{}, request *RequestDeta
 					coreFields[strAttribute] = strOwnerID
 				}
 			}
-		} else if strAttribute == "h_updatebygroup" && strMapping != "" {
-			//-- Get Team ID
-			swTeamID := getFieldValue(strMapping, &diaryEntry)
-			strTeamID, strTeamName := getCallTeamID(swTeamID, espXmlmc, buffer)
-			if strTeamID == "" && mapGenericConf.DefaultTeam != "" {
-				strTeamID = getTeamID(strTeamName, espXmlmc, buffer)
-			}
-			if strTeamID != "" && strTeamName != "" {
-				coreFields[strAttribute] = strTeamID
-			}
 		} else if strAttribute == "h_updatedate" && strMapping != "" {
 			strUpdateDate := parseDateTime(getFieldValue(strMapping, &diaryEntry), strAttribute, buffer)
 			if strUpdateDate != "" {

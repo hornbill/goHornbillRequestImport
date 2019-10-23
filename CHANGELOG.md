@@ -5,6 +5,7 @@
 ### Features
 
 - When creating historic update records, if the user is not able to be resolved on the Hornbill instance then the literal values provided will be used instead (in both the h_updateby and h_updatebyname properties)
+- When creating historic update records, the literal value of group will be written to h_updatebygroup, if this field is mapped. Removed the default group value populating this column, as this was not logical
 
 ## 1.3.1 (May 28th 2019)
 
