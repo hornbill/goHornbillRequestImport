@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hornbill/goApiLib"
+	apiLib "github.com/hornbill/goApiLib"
 	"github.com/hornbill/sqlx"
 )
 
@@ -55,14 +55,11 @@ func getHistoricUpdates(request *RequestDetails, espXmlmc *apiLib.XmlmcInstStruc
 
 //applyHistoricalUpdate - takes an update from third party system, imports to Hornbill as Historical Update
 func applyHistoricUpdate(diaryEntry map[string]interface{}, request *RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
-
 	//Build slice to hold core columns
 	coreFields := make(map[string]string)
-	strAttribute := ""
-	strMapping := ""
 	for k, v := range mapGenericConf.HistoricUpdateMapping {
-		strAttribute = fmt.Sprintf("%v", k)
-		strMapping = fmt.Sprintf("%v", v)
+		strAttribute := k
+		strMapping := fmt.Sprint(v)
 
 		if strAttribute == "h_updateby" && strMapping != "" {
 			//Updater Analyst Name
@@ -76,6 +73,8 @@ func applyHistoricUpdate(diaryEntry map[string]interface{}, request *RequestDeta
 						coreFields[strAttribute] = strOwnerID
 						coreFields["h_updatebyname"] = strOwnerName
 					}
+				} else {
+					coreFields[strAttribute] = strOwnerID
 				}
 			}
 		} else if strAttribute == "h_updatebygroup" && strMapping != "" {
@@ -92,6 +91,14 @@ func applyHistoricUpdate(diaryEntry map[string]interface{}, request *RequestDeta
 			strUpdateDate := parseDateTime(getFieldValue(strMapping, &diaryEntry), strAttribute, buffer)
 			if strUpdateDate != "" {
 				coreFields[strAttribute] = strUpdateDate
+			}
+		} else if strAttribute == "h_updatebyname" && strMapping != "" {
+			value, ok := coreFields["h_updatebyname"]
+			if !ok || value == "" {
+				updateByName := getFieldValue(strMapping, &diaryEntry)
+				if updateByName != "" {
+					coreFields[strAttribute] = updateByName
+				}
 			}
 		} else {
 			coreFields[strAttribute] = getFieldValue(strMapping, &diaryEntry)

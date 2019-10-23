@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.4.0
+
+### Features
+
+- When creating historic update records, if the user is not able to be resolved on the Hornbill instance then the literal values provided will be used instead (in both the h_updateby and h_updatebyname properties)
+
 ## 1.3.1 (May 28th 2019)
 
 ### Defect Fix

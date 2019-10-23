@@ -65,6 +65,7 @@ func parseFlags() {
 	flag.StringVar(&configFileName, "file", "conf.json", "Name of the configuration file to load")
 	flag.BoolVar(&configDryRun, "dryrun", false, "Dump import XML to log instead of creating requests")
 	flag.BoolVar(&configVersion, "version", false, "Outputs version number and exits tool")
+	flag.IntVar(&configMaxRoutines, "workers", 1, "The number of concurrent workers")
 	flag.Parse()
 }
 
