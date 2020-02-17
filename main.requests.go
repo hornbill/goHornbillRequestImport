@@ -14,8 +14,8 @@ import (
 
 //processCallData - Query External call data, process accordingly
 func processCallData() {
-	arrCallDetailsMaps, success := queryDBCallDetails(mapGenericConf.ServiceManagerRequestType, mapGenericConf.AppRequestType, connStrAppDB)
-	if success {
+	arrCallDetailsMaps, success, returnedCalls := queryDBCallDetails(mapGenericConf.ServiceManagerRequestType, mapGenericConf.AppRequestType, connStrAppDB)
+	if success && returnedCalls > 0 {
 
 		bar := pb.StartNew(len(arrCallDetailsMaps))
 		defer bar.FinishPrint(mapGenericConf.ServiceManagerRequestType + " Request Import Complete")
@@ -45,7 +45,11 @@ func processCallData() {
 
 //processCallDataODBC - Query ODBC call data, process accordingly
 func processCallDataODBC() {
-	arrCallDetailsMaps, success := queryDBCallDetails(mapGenericConf.ServiceManagerRequestType, mapGenericConf.AppRequestType, connStrAppDB)
+	arrCallDetailsMaps, success, returnedCalls := queryDBCallDetails(mapGenericConf.ServiceManagerRequestType, mapGenericConf.AppRequestType, connStrAppDB)
+	if success && returnedCalls == 0 {
+		logger(4, "No Request records found for type: "+mapGenericConf.ServiceManagerRequestType+" ["+mapGenericConf.AppRequestType+"]", true)
+		return
+	}
 	if success {
 		bar := pb.StartNew(len(arrCallDetailsMaps))
 		defer bar.FinishPrint(mapGenericConf.ServiceManagerRequestType + " Request Import Complete")
@@ -74,7 +78,7 @@ func processCallDataODBC() {
 			buffer.Reset()
 		}
 	} else {
-		logger(4, "Request search failed for type: "+mapGenericConf.ServiceManagerRequestType+"["+mapGenericConf.AppRequestType+"]", true)
+		logger(4, "Request search failed for type: "+mapGenericConf.ServiceManagerRequestType+" ["+mapGenericConf.AppRequestType+"]", true)
 	}
 }
 

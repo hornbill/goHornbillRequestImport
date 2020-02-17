@@ -55,19 +55,19 @@ func buildConnectionString() string {
 }
 
 //queryDBCallDetails -- Query call data & set map of calls to add to Hornbill
-func queryDBCallDetails(serviceManagerRequestType, appRequestType, connString string) ([]map[string]interface{}, bool) {
+func queryDBCallDetails(serviceManagerRequestType, appRequestType, connString string) ([]map[string]interface{}, bool, int) {
 	var arrCallDetailsMaps []map[string]interface{}
 	dbapp, dberr := sqlx.Open(appDBDriver, connStrAppDB)
 	if dberr != nil {
 		logger(4, "Could not open application DB connection: "+dberr.Error(), true)
-		return nil, false
+		return nil, false, 0
 	}
 	defer dbapp.Close()
 	//Check connection is open
 	err := dbapp.Ping()
 	if err != nil {
 		logger(4, "[DATABASE] [PING] Database Connection Error: "+fmt.Sprintf("%v", err), true)
-		return nil, false
+		return nil, false, 0
 	}
 	logger(3, "[DATABASE] Connection Successful", true)
 	logger(3, "[DATABASE] Retrieving "+serviceManagerRequestType+"s, "+appRequestType+" from the third party application.", true)
@@ -81,17 +81,31 @@ func queryDBCallDetails(serviceManagerRequestType, appRequestType, connString st
 
 	if err != nil {
 		logger(4, " Database Query Error: "+fmt.Sprintf("%v", err), true)
-		return nil, false
+		return nil, false, 0
 	}
 	defer rows.Close()
 	//Build map full of calls to import
 	intCallCount := 0
 	for rows.Next() {
-
+		counters.found++
 		results := make(map[string]interface{})
 		err = rows.MapScan(results)
 
-		s := fmt.Sprintf("%+s", results[mapGenericConf.RequestReferenceColumn])
+		if results[mapGenericConf.RequestReferenceColumn] == nil {
+			logger(4, "Record contains nil value in Reference Column, or Reference Column does not exist in resultset: "+mapGenericConf.RequestReferenceColumn, false)
+			counters.createdSkipped++
+			continue
+		}
+		var s string
+		if valField, ok := results[mapGenericConf.RequestReferenceColumn].(int64); ok {
+			s = strconv.FormatInt(valField, 10)
+		} else if valField, ok := results[mapGenericConf.RequestReferenceColumn].(int32); ok {
+			s = strconv.FormatInt(int64(valField), 10)
+		} else if valField, ok := results[mapGenericConf.RequestReferenceColumn].(float64); ok {
+			s = strconv.FormatFloat(valField, 'f', -1, 64)
+		} else {
+			s = fmt.Sprintf("%s", results[mapGenericConf.RequestReferenceColumn])
+		}
 
 		requestIsInCache, _, _ := recordInCache(s, "Request")
 		if requestIsInCache {
@@ -112,7 +126,7 @@ func queryDBCallDetails(serviceManagerRequestType, appRequestType, connString st
 		//Stick marshalled data map in to parent slice
 		arrCallDetailsMaps = append(arrCallDetailsMaps, results)
 	}
-	return arrCallDetailsMaps, true
+	return arrCallDetailsMaps, true, intCallCount
 }
 
 // getFieldValue --Retrieve field value from mapping via SQL record map
@@ -141,7 +155,7 @@ func getFieldValue(v string, u *map[string]interface{}) string {
 			} else if valField, ok := recordMap[valFieldMap].(float64); ok {
 				valFieldMap = strconv.FormatFloat(valField, 'f', -1, 64)
 			} else {
-				valFieldMap = fmt.Sprintf("%+s", recordMap[valFieldMap])
+				valFieldMap = fmt.Sprintf("%s", recordMap[valFieldMap])
 			}
 
 			if valFieldMap != "<nil>" {

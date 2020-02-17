@@ -87,6 +87,7 @@ func main() {
 
 	//-- End output
 	logger(3, "", true)
+	logger(3, "Records Found: "+fmt.Sprintf("%d", counters.found), true)
 	logger(3, "Requests Logged: "+fmt.Sprintf("%d", counters.created), true)
 	logger(3, "Requests Skipped: "+fmt.Sprintf("%d", counters.createdSkipped), true)
 	logger(3, "Requests with available BPM Workflows: "+fmt.Sprintf("%d", counters.bpmAvailable), true)

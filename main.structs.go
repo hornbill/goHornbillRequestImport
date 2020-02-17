@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	version           = "1.5.0"
+	version           = "1.6.0"
 	appServiceManager = "com.hornbill.servicemanager"
 )
 
@@ -55,6 +55,7 @@ var (
 // ----- Structures -----
 type counterTypeStruct struct {
 	sync.Mutex
+	found           int
 	created         int
 	createdSkipped  int
 	bpmAvailable    int

@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 1.6.0
+
+### Features
+
+- On tool completion, outputs a total of how many request records were found
+- Better error handling and logging when checking records to be imported
+
 ## 1.5.0
 
 ### Feature
