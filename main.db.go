@@ -136,6 +136,8 @@ func getFieldValue(v string, u *map[string]interface{}) string {
 		if recordMap[valFieldMap] != nil {
 			if valField, ok := recordMap[valFieldMap].(int64); ok {
 				valFieldMap = strconv.FormatInt(valField, 10)
+			} else if valField, ok := recordMap[valFieldMap].(int32); ok {
+				valFieldMap = strconv.FormatInt(int64(valField), 10)
 			} else if valField, ok := recordMap[valFieldMap].(float64); ok {
 				valFieldMap = strconv.FormatFloat(valField, 'f', -1, 64)
 			} else {

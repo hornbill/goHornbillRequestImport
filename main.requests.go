@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	apiLib "github.com/hornbill/goApiLib"
 	"github.com/hornbill/pb"
@@ -284,7 +283,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 							//Default Catalog match?
 							for _, catalog := range service.CatalogItems {
 								if catalog.CatalogItemID == request.GenericImportConf.DefaultCatalog &&
-									catalog.Status == "publish" &&
+									(catalog.Status == "publish" || importConf.AllowUnpublishedCatalogItems) &&
 									catalog.RequestType == request.GenericImportConf.ServiceManagerRequestType {
 									strCatalogID = strconv.Itoa(catalog.CatalogItemID)
 									strCatalogName = catalog.CatalogItemName
@@ -298,7 +297,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 								if importConf.ServiceCatalogItemMapping[appCatalogID] != 0 {
 									for _, catalog := range service.CatalogItems {
 										if catalog.CatalogItemID == importConf.ServiceCatalogItemMapping[appCatalogID] &&
-											catalog.Status == "publish" &&
+											(catalog.Status == "publish" || importConf.AllowUnpublishedCatalogItems) &&
 											catalog.RequestType == request.GenericImportConf.ServiceManagerRequestType {
 											strCatalogID = strconv.Itoa(catalog.CatalogItemID)
 											strCatalogName = catalog.CatalogItemName
@@ -614,29 +613,40 @@ func spawnBPM(jobs chan spawnBPMStruct, wg *sync.WaitGroup, espXmlmc *apiLib.Xml
 		var buffer bytes.Buffer
 		buffer.WriteString(loggerGen(3, "   "))
 		buffer.WriteString(loggerGen(1, "Spawning BPM ["+requestRecord.BPMID+"] for ["+requestRecord.RequestID+"]"))
-
-		time.Sleep(100 * time.Millisecond)
 		espXmlmc.SetParam("application", appServiceManager)
 		espXmlmc.SetParam("name", requestRecord.BPMID)
-		espXmlmc.OpenElement("inputParams")
-		espXmlmc.SetParam("objectRefUrn", "urn:sys:entity:"+appServiceManager+":Requests:"+requestRecord.RequestID)
-		espXmlmc.SetParam("requestId", requestRecord.RequestID)
-		espXmlmc.CloseElement("inputParams")
-		XMLBPM, xmlmcErr := espXmlmc.Invoke("bpm", "processSpawn")
+		espXmlmc.SetParam("reference", "urn:sys:entity:"+appServiceManager+":Requests:"+requestRecord.RequestID)
+		espXmlmc.OpenElement("inputParam")
+		espXmlmc.SetParam("name", "requestId")
+		espXmlmc.SetParam("value", requestRecord.RequestID)
+		espXmlmc.CloseElement("inputParam")
+		XMLBPM, xmlmcErr := espXmlmc.Invoke("bpm", "processSpawn2")
 		if xmlmcErr != nil {
 			buffer.WriteString(loggerGen(4, "API Call Failed: Spawn BPM: "+fmt.Sprintf("%v", xmlmcErr)))
-			return
+			bufferMutex.Lock()
+			loggerWriteBuffer(buffer.String())
+			bufferMutex.Unlock()
+			buffer.Reset()
+			continue
 		}
 		var xmlRespon xmlmcBPMSpawnedStruct
 
 		errBPM := xml.Unmarshal([]byte(XMLBPM), &xmlRespon)
 		if errBPM != nil {
 			buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Spawn BPM: "+fmt.Sprintf("%v", errBPM)))
-			return
+			bufferMutex.Lock()
+			loggerWriteBuffer(buffer.String())
+			bufferMutex.Unlock()
+			buffer.Reset()
+			continue
 		}
 		if xmlRespon.MethodResult != "ok" {
 			buffer.WriteString(loggerGen(4, "MethodResult not OK: Spawn BPM: "+xmlRespon.State.ErrorRet))
-			return
+			bufferMutex.Lock()
+			loggerWriteBuffer(buffer.String())
+			bufferMutex.Unlock()
+			buffer.Reset()
+			continue
 		}
 		mutexCounters.Lock()
 		counters.bpmSpawned++

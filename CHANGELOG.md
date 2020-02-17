@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.5.0
+
+### Feature
+
+- Added support to assign Cataog Items in a non-published state to imported requests
+
+### Defect Fixes
+
+- Fixed issue with int32 datatypes not correctly being extracted from data source record columns
+- Fixed issue with spawning BPMs against imported requests
+
 ## 1.4.0
 
 ### Features
@@ -33,7 +44,7 @@
 
 ## 1.1.0 (December 12th 2018)
 
-### Features
+### Feature
 
 - Added support to search both Contacts and Users for request customer, rather than just one or the other
 

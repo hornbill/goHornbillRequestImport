@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	version           = "1.4.1"
+	version           = "1.5.0"
 	appServiceManager = "com.hornbill.servicemanager"
 )
 
@@ -66,20 +66,21 @@ type counterTypeStruct struct {
 
 //----- Config Data Structs
 type importConfStruct struct {
-	HBConf                    hbConfStruct //Hornbill Instance connection details
-	CustomerType              int
-	ContactKeyColumn          string
-	DateTimeFormat            string
-	RelatedRequestQuery       string
-	AppDBConf                 appDBConfStruct //App Data (swdata) connection details
-	RequestTypesToImport      []reqestConfStruct
-	PriorityMapping           map[string]interface{}
-	TeamMapping               map[string]interface{}
-	CategoryMapping           map[string]interface{}
-	ResolutionCategoryMapping map[string]interface{}
-	ServiceMapping            map[string]interface{}
-	ServiceCatalogItemMapping map[string]int
-	StatusMapping             map[string]interface{}
+	HBConf                       hbConfStruct //Hornbill Instance connection details
+	CustomerType                 int
+	ContactKeyColumn             string
+	DateTimeFormat               string
+	RelatedRequestQuery          string
+	AppDBConf                    appDBConfStruct //App Data (swdata) connection details
+	AllowUnpublishedCatalogItems bool
+	RequestTypesToImport         []reqestConfStruct
+	PriorityMapping              map[string]interface{}
+	TeamMapping                  map[string]interface{}
+	CategoryMapping              map[string]interface{}
+	ResolutionCategoryMapping    map[string]interface{}
+	ServiceMapping               map[string]interface{}
+	ServiceCatalogItemMapping    map[string]int
+	StatusMapping                map[string]interface{}
 }
 type hbConfStruct struct {
 	InstanceID string
