@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	version           = "1.6.0"
+	version           = "1.7.0"
 	appServiceManager = "com.hornbill.servicemanager"
 )
 
@@ -74,6 +74,7 @@ type importConfStruct struct {
 	RelatedRequestQuery          string
 	AppDBConf                    appDBConfStruct //App Data (swdata) connection details
 	AllowUnpublishedCatalogItems bool
+	LinkedRequestPostVilibility  string
 	RequestTypesToImport         []reqestConfStruct
 	PriorityMapping              map[string]interface{}
 	TeamMapping                  map[string]interface{}
@@ -118,6 +119,7 @@ type reqestConfStruct struct {
 	RequestQuery               string
 	RequestReferenceColumn     string
 	RequestGUID                string
+	ParentRequestRefColumn     string
 	RequestRelatedQuery        string
 	ServiceManagerRequestType  string
 }

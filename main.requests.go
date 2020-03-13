@@ -572,6 +572,16 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 		if boolOnHoldRequest {
 			holdRequest(newReference, strClosedDate, espXmlmc, buffer)
 		}
+
+		if request.GenericImportConf.ParentRequestRefColumn != "" {
+			parentRef := getFieldValue("["+request.GenericImportConf.ParentRequestRefColumn+"]", &request.CallMap)
+			if parentRef != "" {
+				buffer.WriteString(loggerGen(1, "Parent Request Reference: ["+parentRef+"]"))
+				linkRequests(parentRef, newReference, espXmlmc, buffer)
+			} else {
+				buffer.WriteString(loggerGen(5, "Could not retrieve a Parent Reference value from column ["+request.GenericImportConf.ParentRequestRefColumn+"]"))
+			}
+		}
 	} else {
 		//-- DEBUG XML TO LOG FILE
 		var XMLSTRING = espXmlmc.GetParam()
@@ -582,6 +592,40 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 		espXmlmc.ClearParam()
 	}
 	return oldReference, newReference, oldGUID
+}
+
+func linkRequests(parentRef, newRef string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
+	postVisibility := "trustedGuest"
+	if importConf.LinkedRequestPostVilibility == "team" {
+		postVisibility = "colleague"
+	}
+	espXmlmc.SetParam("entityId", newRef)
+	espXmlmc.SetParam("entityName", "Requests")
+	espXmlmc.SetParam("linkedEntityId", parentRef)
+	espXmlmc.SetParam("linkedEntityName", "Requests")
+	espXmlmc.SetParam("updateTimeline", "true")
+	espXmlmc.SetParam("visibility", postVisibility)
+	XMLHold := espXmlmc.GetParam()
+	XMLBPM, xmlmcErr := espXmlmc.Invoke("apps/com.hornbill.servicemanager/RelationshipEntities", "add")
+	if xmlmcErr != nil {
+		buffer.WriteString(loggerGen(4, "XMLMC error: Unable to link ["+newRef+"] to ["+parentRef+"] : "+fmt.Sprintf("%v", xmlmcErr)))
+		buffer.WriteString(loggerGen(1, XMLHold))
+		return
+	}
+	var xmlRespon xmlmcResponse
+
+	errLogDate := xml.Unmarshal([]byte(XMLBPM), &xmlRespon)
+	if errLogDate != nil {
+		buffer.WriteString(loggerGen(4, "Unmarshal error: Unable to link ["+newRef+"] to ["+parentRef+"] : "+fmt.Sprintf("%v", errLogDate)))
+		buffer.WriteString(loggerGen(1, XMLHold))
+		return
+	}
+	if xmlRespon.MethodResult != "ok" {
+		buffer.WriteString(loggerGen(4, "MethodResult not OK: Unable to link ["+newRef+"] to ["+parentRef+"] : "+xmlRespon.State.ErrorRet))
+		buffer.WriteString(loggerGen(1, XMLHold))
+		return
+	}
+	buffer.WriteString(loggerGen(1, "Requests Linked Successfully: ["+newRef+"] to ["+parentRef+"] "))
 }
 
 func holdRequest(newCallRef, holdDate string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {

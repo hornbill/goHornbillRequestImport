@@ -20,6 +20,7 @@
   "ContactKeyColumn": "h_logon_id",
   "DateTimeFormat": "2006-01-02 15:04:05",
   "AllowUnpublishedCatalogItems": false,
+  "LinkedRequestPostVilibility": "customer",
   "RequestTypesToImport": [{
       "Description": "This object configures the importing of Incidents",
       "Import": true,
@@ -33,6 +34,7 @@
       "RequestQuery": "SELECT opencall.callref, opencall.h_formattedcallref, FROM_UNIXTIME(logdatex) as logdate, FROM_UNIXTIME(closedatex) as closedate, cust_id, cust_name, itsm_title, owner, suppgroup, status, updatedb.updatetxt, priority, itsm_impact_level, itsm_urgency_level, withinfix, withinresp, bpm_workflow_id, probcode, fixcode, site FROM opencall, updatedb WHERE updatedb.callref = opencall.callref AND updatedb.udindex = 0 AND opencall.callclass = 'Incident'",
       "RequestReferenceColumn": "h_formattedcallref",
       "RequestGUID": "callref",
+      "ParentRequestRefColumn": "PARENTREFERENCE",
       "CoreFieldMapping": {
         "h_datelogged": "[logdate]",
         "h_dateclosed": "[closedate]",

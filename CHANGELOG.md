@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.7.0
+
+### Feature
+
+- Added the ability to link imported Requests with a per-row Parent Request
+
 ## 1.6.0
 
 ### Features

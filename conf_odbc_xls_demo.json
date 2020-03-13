@@ -20,9 +20,8 @@
   "ContactKeyColumn":"h_logon_id",
   "DateTimeFormat":"2006-01-02 15:04:05",
   "AllowUnpublishedCatalogItems": false,
-  "RequestTypesToImport": 
-  [
-    {
+  "LinkedRequestPostVilibility": "customer",
+  "RequestTypesToImport": [{
       "Description":"This object configures the importing of Incidents",
       "Import":true,
       "ServiceManagerRequestType": "Incident",
@@ -35,6 +34,7 @@
       "RequestQuery":"SELECT * FROM [requestData$] WHERE RequestType = 'Incident'",
       "RequestReferenceColumn":"CallReference",
       "RequestGUID":"CallReference",
+      "ParentRequestRefColumn": "PARENTREFERENCE",
       "CoreFieldMapping": {
         "h_datelogged":"[Date Logged]",
         "h_dateclosed":"[Date Closed]",
