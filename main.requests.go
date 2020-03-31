@@ -70,7 +70,9 @@ func processCallDataODBC() {
 				oldCallRef, newCallRef, oldCallGUID = logNewCall(RequestDetails{GenericImportConf: mapGenericConf, CallMap: callRecord}, espXmlmc, &buffer)
 			}
 			//Process Historic Updates
-			getHistoricUpdates(&RequestDetails{GenericImportConf: mapGenericConf, CallMap: callRecord, AppRequestRef: oldCallRef, SMRequestRef: newCallRef, AppRequestGUID: oldCallGUID}, espXmlmc, &buffer)
+			if mapGenericConf.RequestHistoricUpdateQuery != "" {
+				getHistoricUpdates(&RequestDetails{GenericImportConf: mapGenericConf, CallMap: callRecord, AppRequestRef: oldCallRef, SMRequestRef: newCallRef, AppRequestGUID: oldCallGUID}, espXmlmc, &buffer)
+			}
 
 			bufferMutex.Lock()
 			loggerWriteBuffer(buffer.String())

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.7.1
+
+### Defect Fix
+
+- Fixed error when no historic update query is provided
+
 ## 1.7.0
 
 ### Feature
