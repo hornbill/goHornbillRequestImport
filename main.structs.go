@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	version           = "1.7.1"
+	version           = "1.7.2"
 	appServiceManager = "com.hornbill.servicemanager"
 )
 

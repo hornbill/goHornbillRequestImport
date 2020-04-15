@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.7.2 (April 15th, 2020)
+
+### Change
+
+- Updated code to support Core application and platform changes
+
 ## 1.7.1
 
 ### Defect Fix

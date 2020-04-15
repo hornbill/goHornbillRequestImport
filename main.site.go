@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hornbill/goApiLib"
+	apiLib "github.com/hornbill/goApiLib"
 )
 
 //getSiteID takes the Call Record and returns a correct Site ID if one exists on the Instance
@@ -36,6 +36,7 @@ func searchSite(siteName string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes
 	boolReturn := false
 	intReturn := 0
 	//-- ESP Query for site
+	espXmlmc.SetParam("application", "com.hornbill.core")
 	espXmlmc.SetParam("entity", "Site")
 	espXmlmc.SetParam("matchScope", "all")
 	espXmlmc.OpenElement("searchFilter")
