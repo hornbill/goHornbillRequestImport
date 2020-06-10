@@ -550,7 +550,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 		mutexCounters.Unlock()
 
 		buffer.WriteString(loggerGen(1, "New Service Manager Request: "+newReference))
-
+		addSocialObjectRef(newReference, espXmlmc, buffer)
 		createActivityStream(newReference, espXmlmc, buffer)
 
 		//Now update Logdate
@@ -741,6 +741,33 @@ func updateRequestBpm(newCallRef, bpmID string, espXmlmc *apiLib.XmlmcInstStruct
 	mutexCounters.Lock()
 	counters.bpmRequest++
 	mutexCounters.Unlock()
+}
+
+func addSocialObjectRef(newCallRef string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
+	espXmlmc.SetParam("application", appServiceManager)
+	espXmlmc.SetParam("entity", "Requests")
+	espXmlmc.OpenElement("primaryEntityData")
+	espXmlmc.OpenElement("record")
+	espXmlmc.SetParam("h_pk_reference", newCallRef)
+	espXmlmc.SetParam("h_social_object_ref", "urn:sys:entity:"+appServiceManager+":Requests:"+newCallRef)
+	espXmlmc.CloseElement("record")
+	espXmlmc.CloseElement("primaryEntityData")
+	XMLLogDate, xmlmcErr := espXmlmc.Invoke("data", "entityUpdateRecord")
+	if xmlmcErr != nil {
+		buffer.WriteString(loggerGen(4, "API Call Failed: Update Social Object Ref ["+newCallRef+"] : "+fmt.Sprintf("%v", xmlmcErr)))
+		return
+	}
+	var xmlRespon xmlmcResponse
+	errLogDate := xml.Unmarshal([]byte(XMLLogDate), &xmlRespon)
+	if errLogDate != nil {
+		buffer.WriteString(loggerGen(4, "Unmarshall Response Failed: Update Social Object Ref ["+newCallRef+"] : "+fmt.Sprintf("%v", errLogDate)))
+		return
+	}
+	if xmlRespon.MethodResult != "ok" {
+		buffer.WriteString(loggerGen(4, "MethodResult Not OK: Update Social Object Ref ["+newCallRef+"] : "+xmlRespon.State.ErrorRet))
+		return
+	}
+	buffer.WriteString(loggerGen(1, "Request Social Object Ref Update Successful"))
 }
 
 func updateLogDate(newCallRef, logDate string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {

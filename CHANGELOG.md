@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.7.3 (June 10th, 2020)
+
+### Fix
+
+- Tool, now updates the social object reference against new requests
+
 ## 1.7.2 (April 15th, 2020)
 
 ### Change
