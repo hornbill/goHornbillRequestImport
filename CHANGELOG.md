@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.7.5 (August 25th, 2020)
+
+### Change
+
+- Set h_archived column to 1 when requests are being imported in a cancelled state
+
 ## 1.7.4 (August 19th, 2020)
 
 ### Fix

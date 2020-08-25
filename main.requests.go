@@ -409,6 +409,9 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 				strStatus = "status.open"
 				boolOnHoldRequest = true
 			}
+			if strStatus == "status.cancelled" {
+				coreFields["h_archived"] = "1"
+			}
 			coreFields[strAttribute] = strStatus
 			boolAutoProcess = false
 		}
