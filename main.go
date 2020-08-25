@@ -7,6 +7,8 @@ import (
 
 	"github.com/fatih/color"
 
+	"github.com/tcnksm/go-latest" //-- For Version checking
+
 	_ "github.com/alexbrainman/odbc"     //ODBC Driver
 	_ "github.com/denisenkom/go-mssqldb" //Microsoft SQL Server driver - v2005+
 	_ "github.com/go-sql-driver/mysql"   //MySQL v4.1 to v5.x and MariaDB driver
@@ -25,8 +27,10 @@ func main() {
 		fmt.Printf("%v \n", version)
 		return
 	}
+
 	//-- Output to CLI and Log
 	logger(1, "---- Hornbill Service Manager Request Import Utility V"+fmt.Sprintf("%v", version)+" ----", true)
+	checkVersion()
 	logger(1, "Flag - Config File "+configFileName, true)
 	logger(1, "Flag - Dry Run "+fmt.Sprintf("%v", configDryRun), true)
 	logger(1, "Flag - Concurrent Requests "+fmt.Sprintf("%v", configMaxRoutines), true)
@@ -99,4 +103,21 @@ func main() {
 	endTime = time.Since(startTime)
 	logger(3, "Time Taken: "+fmt.Sprintf("%v", endTime), true)
 	logger(3, "---- Hornbill Service Manager Request Import Complete ---- ", true)
+}
+
+//-- Check Latest
+func checkVersion() {
+	githubTag := &latest.GithubTag{
+		Owner:      "hornbill",
+		Repository: repo,
+	}
+
+	res, err := latest.Check(githubTag, version)
+	if err != nil {
+		logger(4, "Unable to check utility version against Github repository: "+err.Error(), true)
+		return
+	}
+	if res.Outdated {
+		logger(5, version+" is not latest, you should upgrade to "+res.Current+" by downloading the latest package Here https://github.com/hornbill/"+repo+"/releases/tag/v"+res.Current, true)
+	}
 }
