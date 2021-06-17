@@ -168,11 +168,12 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 		if strAttribute == "h_ownerid" {
 			strOwnerID := getFieldValue(strMapping, &request.CallMap)
 			strOwnerName := ""
+			analystIsInCache := false
 			if strOwnerID != "" {
 				boolAnalystExists := doesAnalystExist(strOwnerID, espXmlmc, buffer)
 				if boolAnalystExists {
 					//Get analyst from cache as exists
-					analystIsInCache, strOwnerName, _ := recordInCache(strOwnerID, "Analyst")
+					analystIsInCache, strOwnerName, _ = recordInCache(strOwnerID, "Analyst")
 					if analystIsInCache && strOwnerName != "" {
 						coreFields[strAttribute] = strOwnerID
 						coreFields["h_ownername"] = strOwnerName
@@ -185,7 +186,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 				boolAnalystExists := doesAnalystExist(strOwnerID, espXmlmc, buffer)
 				if boolAnalystExists {
 					//Get customer from user cache as exists
-					analystIsInCache, strOwnerName, _ := recordInCache(strOwnerID, "Analyst")
+					analystIsInCache, strOwnerName, _ = recordInCache(strOwnerID, "Analyst")
 					if analystIsInCache && strOwnerName != "" {
 						coreFields[strAttribute] = strOwnerID
 						coreFields["h_ownername"] = strOwnerName

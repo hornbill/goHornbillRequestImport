@@ -1,8 +1,14 @@
 # CHANGELOG
 
+## 1.8.1 (June 17th, 2021)
+
+### Fix
+
+- Fixed issue whereby default owner is assigned to a request instead of the configured owner
+
 ## 1.8.0 (August 25th, 2020)
 
-###Â Changes
+### Changes
 
 - Set h_archived column to 1 when requests are being imported in a cancelled state
 - Added version checking code
