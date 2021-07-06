@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/hornbill/goApiLib"
+	apiLib "github.com/hornbill/goApiLib"
 )
 
 //getCallTeamID takes the Call Record and returns a correct Team ID if one exists on the Instance
@@ -79,7 +79,7 @@ func searchTeam(teamName string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes
 	}
 	//-- Check Response
 	if xmlRespon.TeamName != "" {
-		if strings.ToLower(xmlRespon.TeamName) == strings.ToLower(teamName) {
+		if strings.EqualFold(xmlRespon.TeamName, teamName) {
 			strReturn = xmlRespon.TeamID
 			boolReturn = true
 			//-- Add Team to Cache

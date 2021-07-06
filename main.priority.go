@@ -74,7 +74,7 @@ func searchPriority(priorityName string, espXmlmc *apiLib.XmlmcInstStruct, buffe
 
 	//-- Check Response
 	if xmlRespon.PriorityName != "" {
-		if strings.ToLower(xmlRespon.PriorityName) == strings.ToLower(priorityName) {
+		if strings.EqualFold(xmlRespon.PriorityName, priorityName) {
 			intReturn = xmlRespon.PriorityID
 			boolReturn = true
 			//-- Add Priority to Cache

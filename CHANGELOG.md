@@ -1,14 +1,21 @@
 # CHANGELOG
 
+## 1.8.2 (July 6th, 2021)
+
+Change:
+
+- Rebuilt using latest version of goApiLib, to fix possible issue with connections via a proxy
+- Fixed up a few linter warnings
+
 ## 1.8.1 (June 17th, 2021)
 
-### Fix
+###ï¿½Fix
 
 - Fixed issue whereby default owner is assigned to a request instead of the configured owner
 
 ## 1.8.0 (August 25th, 2020)
 
-### Changes
+###ï¿½Changes
 
 - Set h_archived column to 1 when requests are being imported in a cancelled state
 - Added version checking code

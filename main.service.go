@@ -76,7 +76,7 @@ func searchService(serviceName string, espXmlmc *apiLib.XmlmcInstStruct, buffer 
 	}
 	//-- Check Response
 	if xmlRespon.ServiceName != "" {
-		if strings.ToLower(xmlRespon.ServiceName) == strings.ToLower(serviceName) {
+		if strings.EqualFold(xmlRespon.ServiceName, serviceName) {
 			intReturn = xmlRespon.ServiceID
 			boolReturn = true
 			//-- Add Service to Cache

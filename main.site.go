@@ -62,7 +62,7 @@ func searchSite(siteName string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes
 	}
 	//-- Check Response
 	if xmlRespon.SiteName != "" {
-		if strings.ToLower(xmlRespon.SiteName) == strings.ToLower(siteName) {
+		if strings.EqualFold(xmlRespon.SiteName, siteName) {
 			intReturn = xmlRespon.SiteID
 			boolReturn = true
 			//-- Add Site to Cache

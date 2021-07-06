@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	version           = "1.8.1"
+	version           = "1.8.2"
 	appServiceManager = "com.hornbill.servicemanager"
 	repo              = "goHornbillRequestImport"
 )
@@ -34,7 +34,6 @@ var (
 	teams                []teamListStruct
 	sqlCallQuery         string
 	importConf           importConfStruct
-	timeNow              string
 	startTime            time.Time
 	endTime              time.Duration
 	wg                   sync.WaitGroup
