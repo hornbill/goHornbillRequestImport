@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.8.3 (January 28th, 2022)
+
+### Fix
+
+- Fixed prefix issue caused by API change
+
 ## 1.8.2 (July 6th, 2021)
 
 Change:
@@ -9,13 +15,13 @@ Change:
 
 ## 1.8.1 (June 17th, 2021)
 
-###ï¿½Fix
+### Fix
 
 - Fixed issue whereby default owner is assigned to a request instead of the configured owner
 
 ## 1.8.0 (August 25th, 2020)
 
-###ï¿½Changes
+### Changes
 
 - Set h_archived column to 1 when requests are being imported in a cancelled state
 - Added version checking code
@@ -38,39 +44,39 @@ Change:
 
 - Updated code to support Core application and platform changes
 
-##Â 1.7.1
+## 1.7.1
 
 ### Defect Fix
 
 - Fixed error when no historic update query is provided
 
-##Â 1.7.0
+## 1.7.0
 
-###Â Feature
+### Feature
 
 - Added the ability to link imported Requests with a per-row Parent Request
 
-##Â 1.6.0
+## 1.6.0
 
-###Â Features
+### Features
 
 - On tool completion, outputs a total of how many request records were found
 - Better error handling and logging when checking records to be imported
 
-##Â 1.5.0
+## 1.5.0
 
-###Â Feature
+### Feature
 
 - Added support to assign Cataog Items in a non-published state to imported requests
 
-###Â Defect Fixes
+### Defect Fixes
 
 - Fixed issue with int32 datatypes not correctly being extracted from data source record columns
 - Fixed issue with spawning BPMs against imported requests
 
-##Â 1.4.0
+## 1.4.0
 
-###Â Features
+### Features
 
 - When creating historic update records, if the user is not able to be resolved on the Hornbill instance then the literal values provided will be used instead (in both the h_updateby and h_updatebyname properties)
 - When creating historic update records, the literal value of group will be written to h_updatebygroup, if this field is mapped. Removed the default group value populating this column, as this was not logical
