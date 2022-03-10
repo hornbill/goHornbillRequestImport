@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	version           = "1.8.3"
+	version           = "1.8.4"
 	appServiceManager = "com.hornbill.servicemanager"
 	repo              = "goHornbillRequestImport"
 )

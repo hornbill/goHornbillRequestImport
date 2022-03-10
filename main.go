@@ -42,6 +42,12 @@ func main() {
 		return
 	}
 
+	err := checkInstanceID(importConf.HBConf.InstanceID)
+	if err != nil {
+		logger(4, err.Error(), true)
+		return
+	}
+
 	configMaxRoutines = len(importConf.HBConf.APIKeys)
 	if configMaxRoutines < 1 || configMaxRoutines > 10 {
 		color.Red("The maximum allowed workers is between 1 and 10 (inclusive).\n\n")

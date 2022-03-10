@@ -288,30 +288,56 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 
 						if useDefaultService && request.GenericImportConf.DefaultCatalog != 0 {
 							//Default Catalog match?
+							buffer.WriteString(loggerGen(1, "Using default catalog item ID: "+strconv.Itoa(request.GenericImportConf.DefaultCatalog)))
+							catalogInDefaultService := false
 							for _, catalog := range service.CatalogItems {
-								if catalog.CatalogItemID == request.GenericImportConf.DefaultCatalog &&
-									(catalog.Status == "publish" || importConf.AllowUnpublishedCatalogItems) &&
-									catalog.RequestType == request.GenericImportConf.ServiceManagerRequestType {
-									strCatalogID = strconv.Itoa(catalog.CatalogItemID)
-									strCatalogName = catalog.CatalogItemName
-									strServiceBPM = catalog.BPM
+								if catalog.CatalogItemID == request.GenericImportConf.DefaultCatalog {
+									catalogInDefaultService = true
+									if catalog.Status == "publish" || importConf.AllowUnpublishedCatalogItems {
+										if catalog.RequestType == request.GenericImportConf.ServiceManagerRequestType {
+											strCatalogID = strconv.Itoa(catalog.CatalogItemID)
+											strCatalogName = catalog.CatalogItemName
+											strServiceBPM = catalog.BPM
+										} else {
+											buffer.WriteString(loggerGen(1, "Default Catalog Item "+strconv.Itoa(request.GenericImportConf.DefaultCatalog)+" has a request type of "+catalog.RequestType+" but the request being imported has a type of "+request.GenericImportConf.ServiceManagerRequestType))
+										}
+									} else {
+										buffer.WriteString(loggerGen(1, "Default Catalog Item "+strconv.Itoa(request.GenericImportConf.DefaultCatalog)+" has a status of "+catalog.Status+". This should be publish, or the AllowUnpublishedCatalogItems flag should be set"))
+									}
 								}
+							}
+							if !catalogInDefaultService {
+								buffer.WriteString(loggerGen(1, "Default Catalog Item "+strconv.Itoa(request.GenericImportConf.DefaultCatalog)+" is not related to Service "+service.ServiceName))
 							}
 						} else {
 							//Check catalog match
 							if strCatalogNameMapping, ok := mapGenericConf.CoreFieldMapping["h_catalog_id"]; ok {
 								appCatalogID := getFieldValue(fmt.Sprintf("%s", strCatalogNameMapping), &request.CallMap)
 								if importConf.ServiceCatalogItemMapping[appCatalogID] != 0 {
+									buffer.WriteString(loggerGen(1, "Record Catalog Item "+appCatalogID+" found in import configuration ServiceCatalogItemMapping"))
+									catalogInService := false
 									for _, catalog := range service.CatalogItems {
-										if catalog.CatalogItemID == importConf.ServiceCatalogItemMapping[appCatalogID] &&
-											(catalog.Status == "publish" || importConf.AllowUnpublishedCatalogItems) &&
-											catalog.RequestType == request.GenericImportConf.ServiceManagerRequestType {
-											strCatalogID = strconv.Itoa(catalog.CatalogItemID)
-											strCatalogName = catalog.CatalogItemName
-											strServiceBPM = catalog.BPM
+										if catalog.CatalogItemID == importConf.ServiceCatalogItemMapping[appCatalogID] {
+											catalogInService = true
+											if catalog.Status == "publish" || importConf.AllowUnpublishedCatalogItems {
+												if catalog.RequestType == request.GenericImportConf.ServiceManagerRequestType {
+													strCatalogID = strconv.Itoa(catalog.CatalogItemID)
+													strCatalogName = catalog.CatalogItemName
+													strServiceBPM = catalog.BPM
+												} else {
+													buffer.WriteString(loggerGen(1, "Record Catalog Item "+appCatalogID+" has a request type of "+catalog.RequestType+" but the request being imported has a type of "+request.GenericImportConf.ServiceManagerRequestType))
+												}
+											} else {
+												buffer.WriteString(loggerGen(1, "Record Catalog Item "+appCatalogID+" has a status of "+catalog.Status+". This should be publish, or the AllowUnpublishedCatalogItems flag should be set"))
+											}
 										}
 									}
+									if !catalogInService {
+										buffer.WriteString(loggerGen(1, "Record Catalog Item "+appCatalogID+" is not related to Service "+service.ServiceName))
+									}
 								}
+							} else {
+								buffer.WriteString(loggerGen(1, "h_catalog_id not specified in CoreFieldMapping for this Request Type"))
 							}
 						}
 

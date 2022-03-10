@@ -3,10 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"strconv"
 
-	"github.com/hornbill/goApiLib"
+	apiLib "github.com/hornbill/goApiLib"
 )
 
 //doesAnalystExist takes an Analyst ID string and returns a true if one exists in the cache or on the Instance
@@ -66,6 +67,7 @@ func doesContactExist(customerID string, espXmlmc *apiLib.XmlmcInstStruct, buffe
 			boolCustomerExists = true
 		} else {
 			//Get Analyst Info
+			espXmlmc.SetParam("application", "com.hornbill.core")
 			espXmlmc.SetParam("entity", "Contact")
 			espXmlmc.SetParam("matchScope", "all")
 			espXmlmc.OpenElement("searchFilter")
@@ -112,6 +114,13 @@ func doesContactExist(customerID string, espXmlmc *apiLib.XmlmcInstStruct, buffe
 		}
 	}
 	return boolCustomerExists
+}
+
+func checkInstanceID(instanceID string) (err error) {
+	if apiLib.GetEndPointFromName(instanceID) == "" {
+		err = errors.New("Unable to retrieve endpoint information for the supplied InstanceID: " + instanceID)
+	}
+	return
 }
 
 //NewEspXmlmcSession - New Xmlmc Session variable (Cloned Session)
