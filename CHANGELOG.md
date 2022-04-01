@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.8.5 (April 1st, 2022)
+
+### Change
+
+- Updated code to support application segregation
+
 ## 1.8.4
 
 Change:
@@ -55,39 +61,39 @@ Change:
 
 - Updated code to support Core application and platform changes
 
-##�1.7.1
+## 1.7.1
 
 ### Defect Fix
 
 - Fixed error when no historic update query is provided
 
-##�1.7.0
+## 1.7.0
 
-###�Feature
+### Feature
 
 - Added the ability to link imported Requests with a per-row Parent Request
 
-##�1.6.0
+## 1.6.0
 
-###�Features
+### Features
 
 - On tool completion, outputs a total of how many request records were found
 - Better error handling and logging when checking records to be imported
 
-##�1.5.0
+## 1.5.0
 
-###�Feature
+### Feature
 
 - Added support to assign Cataog Items in a non-published state to imported requests
 
-###�Defect Fixes
+### Defect Fixes
 
 - Fixed issue with int32 datatypes not correctly being extracted from data source record columns
 - Fixed issue with spawning BPMs against imported requests
 
-##�1.4.0
+## 1.4.0
 
-###�Features
+### Features
 
 - When creating historic update records, if the user is not able to be resolved on the Hornbill instance then the literal values provided will be used instead (in both the h_updateby and h_updatebyname properties)
 - When creating historic update records, the literal value of group will be written to h_updatebygroup, if this field is mapped. Removed the default group value populating this column, as this was not logical
