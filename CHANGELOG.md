@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 1.9.0 (May 17th, 2022)
+
+### Features
+
+- Added support to publish Problems and Known Errors
+- Added the ability to map owner IDs from the external system into Hornbill users
+
+### Fixed
+
+- Issue where extended datetime attributes were not being parsed 
+
 ## 1.8.5 (April 1st, 2022)
 
 ### Change

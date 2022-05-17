@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"strconv"
@@ -157,6 +158,8 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 	boolUpdateLogDate := false
 	strLoggedDate := ""
 	strClosedDate := ""
+	strServiceID := ""
+	strServiceName := ""
 
 	//Loop through core fields from config, add to XMLMC Params
 	for k, v := range mapGenericConf.CoreFieldMapping {
@@ -170,6 +173,9 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 			strOwnerName := ""
 			analystIsInCache := false
 			if strOwnerID != "" {
+				if importConf.OwnerMapping[strOwnerID] != nil {
+					strOwnerID = fmt.Sprintf("%s", importConf.OwnerMapping[strOwnerID])
+				}
 				boolAnalystExists := doesAnalystExist(strOwnerID, espXmlmc, buffer)
 				if boolAnalystExists {
 					//Get analyst from cache as exists
@@ -269,7 +275,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 		if strAttribute == "h_fk_serviceid" {
 			//-- Get Service ID
 			appServiceID := getFieldValue(strMapping, &request.CallMap)
-			strServiceID := getCallServiceID(appServiceID, espXmlmc, buffer)
+			strServiceID = getCallServiceID(appServiceID, espXmlmc, buffer)
 			useDefaultService := false
 			if strServiceID == "" && mapGenericConf.DefaultService != "" {
 				useDefaultService = true
@@ -277,7 +283,6 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 			}
 			if strServiceID != "" {
 				//-- Get record from Service Cache
-				strServiceName := ""
 				strCatalogName := ""
 				strCatalogID := ""
 
@@ -508,8 +513,13 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 	for k, v := range mapGenericConf.AdditionalFieldMapping {
 		strAttribute = fmt.Sprintf("%v", k)
 		strMapping = fmt.Sprintf("%v", v)
-		if strMapping != "" && getFieldValue(strMapping, &request.CallMap) != "" {
-			espXmlmc.SetParam(strAttribute, getFieldValue(strMapping, &request.CallMap))
+		mappedValue := getFieldValue(strMapping, &request.CallMap)
+
+		// Resolved Date/Time
+		if (strAttribute == "h_last_updated" || strAttribute == "h_start_time" || strAttribute == "h_end_time" || strAttribute == "h_proposed_start_time" || strAttribute == "h_proposed_end_time") && mappedValue != "" {
+			espXmlmc.SetParam(strAttribute, parseDateTime(mappedValue, strAttribute, buffer))
+		} else if strMapping != "" && mappedValue != "" {
+			espXmlmc.SetParam(strAttribute, mappedValue)
 		}
 	}
 
@@ -560,7 +570,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 			mutexCounters.Lock()
 			counters.createdSkipped++
 			mutexCounters.Unlock()
-			buffer.WriteString(loggerGen(4, "Response Unmarshal failed: New Request : "+fmt.Sprintf("%v", err)))
+			buffer.WriteString(loggerGen(4, "Response Unmarshal failed: New Request : "+err.Error()))
 			buffer.WriteString(loggerGen(1, "[XML] "+XMLRequest))
 			return oldReference, newReference, oldGUID
 		}
@@ -605,6 +615,23 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 			holdRequest(newReference, strClosedDate, espXmlmc, buffer)
 		}
 
+		if request.GenericImportConf.PublishedMapping.Publish && request.GenericImportConf.ServiceManagerRequestType == "Problem" || request.GenericImportConf.ServiceManagerRequestType == "Known Error" {
+			publishDetails := PubMapStruct{}
+			publishDetails.RequestRef = newReference
+			publishDetails.RequestType = request.GenericImportConf.ServiceManagerRequestType
+			publishDetails.ServiceName = strServiceName
+			publishDetails.ServiceID = strServiceID
+			publishDetails.Description = getFieldValue(fmt.Sprintf("%v", request.GenericImportConf.PublishedMapping.Description), &request.CallMap)
+			publishDetails.Workaround = getFieldValue(fmt.Sprintf("%v", request.GenericImportConf.PublishedMapping.Workaround), &request.CallMap)
+			publishDetails.PublishedStatus = getFieldValue(fmt.Sprintf("%v", request.GenericImportConf.PublishedMapping.PublishedStatus), &request.CallMap)
+			publishDetails.ShowWorkaround = request.GenericImportConf.PublishedMapping.ShowWorkaround
+			publishDetails.LanguageCode = getFieldValue(fmt.Sprintf("%v", request.GenericImportConf.PublishedMapping.LanguageCode), &request.CallMap)
+			publishDetails.CreateEnglish = request.GenericImportConf.PublishedMapping.CreateEnglish
+			publishDetails.DatePublished = getFieldValue(fmt.Sprintf("%v", request.GenericImportConf.PublishedMapping.DatePublished), &request.CallMap)
+
+			publishRequest(publishDetails, espXmlmc, buffer)
+		}
+
 		if request.GenericImportConf.ParentRequestRefColumn != "" {
 			parentRef := getFieldValue("["+request.GenericImportConf.ParentRequestRefColumn+"]", &request.CallMap)
 			if parentRef != "" {
@@ -626,6 +653,57 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 	return oldReference, newReference, oldGUID
 }
 
+func publishRequest(requestDetails PubMapStruct, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
+	espXmlmc.SetParam("entityObj", "{\"name\":\"PublishedRequests\",\"title\":\"h_request_id\",\"description\":\"h_published_description\",\"entityColumn\":\"h_id\",\"linkedColumn\":\"h_published_request_id\"}")
+	espXmlmc.SetParam("inputTitle", requestDetails.RequestRef)
+	espXmlmc.SetParam("inputDescription", requestDetails.Description)
+	espXmlmc.SetParam("userLanguage", requestDetails.LanguageCode)
+	espXmlmc.SetParam("createEng", strconv.FormatBool(requestDetails.CreateEnglish))
+
+	//Build extra params
+	extraParams := PubExtraStruct{}
+	extraParams.HDatePublished = requestDetails.DatePublished
+	extraParams.HRequestType = requestDetails.RequestType
+	extraParams.HServiceID = requestDetails.ServiceID
+	extraParams.HServiceName = requestDetails.ServiceName
+	extraParams.HShowWorkaround = 0
+	if requestDetails.ShowWorkaround {
+		extraParams.HShowWorkaround = 1
+	}
+	extraParams.HStatus = requestDetails.PublishedStatus
+	extraParams.HWorkaround = requestDetails.Workaround
+	extraJSON, err := json.Marshal(extraParams)
+	if err != nil {
+		fmt.Println(err)
+		buffer.WriteString(loggerGen(4, "Marshal error: Unable to publish ["+requestDetails.RequestRef+"] : "+err.Error()))
+		return
+	}
+	espXmlmc.SetParam("extraParams", string(extraJSON))
+
+	XMLPub := espXmlmc.GetParam()
+	XMLPublish, xmlmcErr := espXmlmc.Invoke("apps/com.hornbill.servicemanager", "translateCreate")
+	if xmlmcErr != nil {
+		buffer.WriteString(loggerGen(4, "XMLMC error: Unable to publish ["+requestDetails.RequestRef+"] : "+xmlmcErr.Error()))
+		buffer.WriteString(loggerGen(1, XMLPub))
+		return
+	}
+	var xmlRespon xmlmcResponse
+
+	errLogDate := xml.Unmarshal([]byte(XMLPublish), &xmlRespon)
+	if errLogDate != nil {
+		buffer.WriteString(loggerGen(4, "Unmarshal error: Unable to publish ["+requestDetails.RequestRef+"] : "+errLogDate.Error()))
+		buffer.WriteString(loggerGen(1, XMLPub))
+		return
+	}
+	if xmlRespon.MethodResult != "ok" {
+		buffer.WriteString(loggerGen(4, "MethodResult not OK: Unable to publish ["+requestDetails.RequestRef+"] : "+xmlRespon.State.ErrorRet))
+		buffer.WriteString(loggerGen(1, XMLPub))
+		return
+	}
+	buffer.WriteString(loggerGen(1, "Request Published Successfully: ["+requestDetails.RequestRef+"]"))
+	counters.pubished++
+}
+
 func linkRequests(parentRef, newRef string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
 	postVisibility := "trustedGuest"
 	if importConf.LinkedRequestPostVilibility == "team" {
@@ -640,7 +718,7 @@ func linkRequests(parentRef, newRef string, espXmlmc *apiLib.XmlmcInstStruct, bu
 	XMLHold := espXmlmc.GetParam()
 	XMLBPM, xmlmcErr := espXmlmc.Invoke("apps/com.hornbill.servicemanager/RelationshipEntities", "add")
 	if xmlmcErr != nil {
-		buffer.WriteString(loggerGen(4, "XMLMC error: Unable to link ["+newRef+"] to ["+parentRef+"] : "+fmt.Sprintf("%v", xmlmcErr)))
+		buffer.WriteString(loggerGen(4, "XMLMC error: Unable to link ["+newRef+"] to ["+parentRef+"] : "+xmlmcErr.Error()))
 		buffer.WriteString(loggerGen(1, XMLHold))
 		return
 	}
@@ -648,7 +726,7 @@ func linkRequests(parentRef, newRef string, espXmlmc *apiLib.XmlmcInstStruct, bu
 
 	errLogDate := xml.Unmarshal([]byte(XMLBPM), &xmlRespon)
 	if errLogDate != nil {
-		buffer.WriteString(loggerGen(4, "Unmarshal error: Unable to link ["+newRef+"] to ["+parentRef+"] : "+fmt.Sprintf("%v", errLogDate)))
+		buffer.WriteString(loggerGen(4, "Unmarshal error: Unable to link ["+newRef+"] to ["+parentRef+"] : "+errLogDate.Error()))
 		buffer.WriteString(loggerGen(1, XMLHold))
 		return
 	}
@@ -667,7 +745,7 @@ func holdRequest(newCallRef, holdDate string, espXmlmc *apiLib.XmlmcInstStruct, 
 	XMLHold := espXmlmc.GetParam()
 	XMLBPM, xmlmcErr := espXmlmc.Invoke("apps/"+appServiceManager+"/Requests", "holdRequest")
 	if xmlmcErr != nil {
-		buffer.WriteString(loggerGen(4, "XMLMC error: Unable to place request on hold ["+newCallRef+"] : "+fmt.Sprintf("%v", xmlmcErr)))
+		buffer.WriteString(loggerGen(4, "XMLMC error: Unable to place request on hold ["+newCallRef+"] : "+xmlmcErr.Error()))
 		buffer.WriteString(loggerGen(1, XMLHold))
 		return
 	}
@@ -675,7 +753,7 @@ func holdRequest(newCallRef, holdDate string, espXmlmc *apiLib.XmlmcInstStruct, 
 
 	errLogDate := xml.Unmarshal([]byte(XMLBPM), &xmlRespon)
 	if errLogDate != nil {
-		buffer.WriteString(loggerGen(4, "Unmarshal error: Unable to place request on hold ["+newCallRef+"] : "+fmt.Sprintf("%v", errLogDate)))
+		buffer.WriteString(loggerGen(4, "Unmarshal error: Unable to place request on hold ["+newCallRef+"] : "+errLogDate.Error()))
 		buffer.WriteString(loggerGen(1, XMLHold))
 		return
 	}
@@ -706,7 +784,7 @@ func spawnBPM(jobs chan spawnBPMStruct, wg *sync.WaitGroup, espXmlmc *apiLib.Xml
 		espXmlmc.CloseElement("inputParam")
 		XMLBPM, xmlmcErr := espXmlmc.Invoke("bpm", "processSpawn2")
 		if xmlmcErr != nil {
-			buffer.WriteString(loggerGen(4, "API Call Failed: Spawn BPM: "+fmt.Sprintf("%v", xmlmcErr)))
+			buffer.WriteString(loggerGen(4, "API Call Failed: Spawn BPM: "+xmlmcErr.Error()))
 			bufferMutex.Lock()
 			loggerWriteBuffer(buffer.String())
 			bufferMutex.Unlock()
@@ -717,7 +795,7 @@ func spawnBPM(jobs chan spawnBPMStruct, wg *sync.WaitGroup, espXmlmc *apiLib.Xml
 
 		errBPM := xml.Unmarshal([]byte(XMLBPM), &xmlRespon)
 		if errBPM != nil {
-			buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Spawn BPM: "+fmt.Sprintf("%v", errBPM)))
+			buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Spawn BPM: "+errBPM.Error()))
 			bufferMutex.Lock()
 			loggerWriteBuffer(buffer.String())
 			bufferMutex.Unlock()
@@ -757,13 +835,13 @@ func updateRequestBpm(newCallRef, bpmID string, espXmlmc *apiLib.XmlmcInstStruct
 
 	XMLBPMUpdate, xmlmcErr := espXmlmc.Invoke("data", "updateRecord")
 	if xmlmcErr != nil {
-		buffer.WriteString(loggerGen(4, "API Call Failed: Associate BPM to Request: "+fmt.Sprintf("%v", xmlmcErr)))
+		buffer.WriteString(loggerGen(4, "API Call Failed: Associate BPM to Request: "+xmlmcErr.Error()))
 		return
 	}
 	var xmlRespon xmlmcResponse
 	errBPMSpawn := xml.Unmarshal([]byte(XMLBPMUpdate), &xmlRespon)
 	if errBPMSpawn != nil {
-		buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Associate BPM to Request: "+fmt.Sprintf("%v", errBPMSpawn)))
+		buffer.WriteString(loggerGen(4, "Response Unmarshal Failed: Associate BPM to Request: "+errBPMSpawn.Error()))
 		return
 	}
 	if xmlRespon.MethodResult != "ok" {
@@ -788,13 +866,13 @@ func addSocialObjectRef(newCallRef string, espXmlmc *apiLib.XmlmcInstStruct, buf
 	espXmlmc.CloseElement("primaryEntityData")
 	XMLLogDate, xmlmcErr := espXmlmc.Invoke("data", "entityUpdateRecord")
 	if xmlmcErr != nil {
-		buffer.WriteString(loggerGen(4, "API Call Failed: Update Social Object Ref ["+newCallRef+"] : "+fmt.Sprintf("%v", xmlmcErr)))
+		buffer.WriteString(loggerGen(4, "API Call Failed: Update Social Object Ref ["+newCallRef+"] : "+xmlmcErr.Error()))
 		return
 	}
 	var xmlRespon xmlmcResponse
 	errLogDate := xml.Unmarshal([]byte(XMLLogDate), &xmlRespon)
 	if errLogDate != nil {
-		buffer.WriteString(loggerGen(4, "Unmarshall Response Failed: Update Social Object Ref ["+newCallRef+"] : "+fmt.Sprintf("%v", errLogDate)))
+		buffer.WriteString(loggerGen(4, "Unmarshall Response Failed: Update Social Object Ref ["+newCallRef+"] : "+errLogDate.Error()))
 		return
 	}
 	if xmlRespon.MethodResult != "ok" {
@@ -815,13 +893,13 @@ func updateLogDate(newCallRef, logDate string, espXmlmc *apiLib.XmlmcInstStruct,
 	espXmlmc.CloseElement("primaryEntityData")
 	XMLLogDate, xmlmcErr := espXmlmc.Invoke("data", "entityUpdateRecord")
 	if xmlmcErr != nil {
-		buffer.WriteString(loggerGen(4, "API Call Failed: Update Log Date ["+newCallRef+"] : "+fmt.Sprintf("%v", xmlmcErr)))
+		buffer.WriteString(loggerGen(4, "API Call Failed: Update Log Date ["+newCallRef+"] : "+xmlmcErr.Error()))
 		return
 	}
 	var xmlRespon xmlmcResponse
 	errLogDate := xml.Unmarshal([]byte(XMLLogDate), &xmlRespon)
 	if errLogDate != nil {
-		buffer.WriteString(loggerGen(4, "Unmarshall Response Failed: Update Log Date ["+newCallRef+"] : "+fmt.Sprintf("%v", errLogDate)))
+		buffer.WriteString(loggerGen(4, "Unmarshall Response Failed: Update Log Date ["+newCallRef+"] : "+errLogDate.Error()))
 		return
 	}
 	if xmlRespon.MethodResult != "ok" {
@@ -839,13 +917,13 @@ func createActivityStream(newCallRef string, espXmlmc *apiLib.XmlmcInstStruct, b
 	espXmlmc.SetParam("type", "Logged")
 	fixed, err := espXmlmc.Invoke("activity", "postMessage")
 	if err != nil {
-		buffer.WriteString(loggerGen(5, "API Call Failed: Activity Stream Creation ["+newCallRef+"] : "+fmt.Sprintf("%v", err)))
+		buffer.WriteString(loggerGen(5, "API Call Failed: Activity Stream Creation ["+newCallRef+"] : "+err.Error()))
 		return
 	}
 	var xmlRespon xmlmcResponse
 	err = xml.Unmarshal([]byte(fixed), &xmlRespon)
 	if err != nil {
-		buffer.WriteString(loggerGen(5, "Unmarshall Response Failed: Activity Stream Creation ["+newCallRef+"] : "+fmt.Sprintf("%v", err)))
+		buffer.WriteString(loggerGen(5, "Unmarshall Response Failed: Activity Stream Creation ["+newCallRef+"] : "+err.Error()))
 		return
 	}
 	if xmlRespon.MethodResult != "ok" {

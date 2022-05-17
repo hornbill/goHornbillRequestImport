@@ -117,16 +117,16 @@
       }
     },
     {
-      "Description":"This object configures the importing of Service Requests",
+      "Description":"This object configures the importing of Problems",
       "Import":true,
-      "ServiceManagerRequestType": "Service Request",
-      "AppRequestType":"Service Request",
+      "ServiceManagerRequestType": "Problem",
+      "AppRequestType":"Problem",
       "DefaultTeam": "Service Desk",
       "DefaultOwner": "ownerid",
       "DefaultPriority": "Low",
       "DefaultService": "Communications",
       "DefaultCatalog": 5,
-      "RequestQuery":"SELECT * FROM [requestData$] WHERE RequestType = 'Service Request'",
+      "RequestQuery":"SELECT * FROM [requestData$] WHERE RequestType = 'Problem'",
       "RequestReferenceColumn":"CallReference",
       "RequestGUID":"CallReference",
       "CoreFieldMapping": {
@@ -173,6 +173,7 @@
         "h_custom_q":""
       },
       "AdditionalFieldMapping":{
+        "h_workaround": "[WORKAROUND]",
         "h_custom_a":"",
         "h_custom_b":"",
         "h_custom_c":"",
@@ -190,6 +191,16 @@
         "h_custom_o":"",
         "h_custom_p":"",
         "h_custom_q":""
+      },
+      "PublishedMapping": {
+          "Publish": false,
+          "Description": "[DESCRIPTION]",
+          "LanguageCode": "en-GB",
+          "CreateEnglish": false,
+          "PublishedStatus": "publish",
+          "DatePublished": "2022-05-12 16:12:05",
+          "ShowWorkaround": false,
+          "Workaround": "[WORKAROUND]"
       },
       "RequestHistoricUpdateQuery":"SELECT * FROM [diaryData$] WHERE CallReference = {RequestGUID}",
       "HistoricUpdateMapping":{
@@ -214,6 +225,9 @@
   },
   "CategoryMapping": {
     "External Category": "Service Manager Category ID"
+  },
+  "OwnerMapping": {
+    "External User ID": "Hornbill User ID"
   },
   "ResolutionCategoryMapping": {
     "External Resolution Profile Code": "Service Manager Resolution Profile Code"

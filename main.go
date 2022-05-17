@@ -105,6 +105,7 @@ func main() {
 	logger(3, "BPM Workflows Associated to Requests: "+fmt.Sprintf("%d", counters.bpmRequest), true)
 	logger(3, "Historic Updates Created: "+fmt.Sprintf("%d", counters.historicUpdated), true)
 	logger(3, "Historic Updates Skipped: "+fmt.Sprintf("%d", counters.historicSkipped), true)
+	logger(3, "Requests Published: "+fmt.Sprintf("%d", counters.pubished), true)
 	//-- Show Time Takens
 	endTime = time.Since(startTime)
 	logger(3, "Time Taken: "+fmt.Sprintf("%v", endTime), true)

@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	version           = "1.8.5"
+	version           = "1.9.0"
 	appServiceManager = "com.hornbill.servicemanager"
 	repo              = "goHornbillRequestImport"
 )
@@ -63,6 +63,7 @@ type counterTypeStruct struct {
 	bpmRequest      int
 	historicUpdated int
 	historicSkipped int
+	pubished        int
 }
 
 //----- Config Data Structs
@@ -76,6 +77,7 @@ type importConfStruct struct {
 	AllowUnpublishedCatalogItems bool
 	LinkedRequestPostVilibility  string
 	RequestTypesToImport         []reqestConfStruct
+	OwnerMapping                 map[string]interface{}
 	PriorityMapping              map[string]interface{}
 	TeamMapping                  map[string]interface{}
 	CategoryMapping              map[string]interface{}
@@ -115,6 +117,7 @@ type reqestConfStruct struct {
 	Description                string
 	HistoricUpdateMapping      map[string]interface{}
 	Import                     bool
+	PublishedMapping           PubMapStruct `json:"PublishedMapping"`
 	RequestHistoricUpdateQuery string
 	RequestQuery               string
 	RequestReferenceColumn     string
@@ -122,6 +125,31 @@ type reqestConfStruct struct {
 	ParentRequestRefColumn     string
 	RequestRelatedQuery        string
 	ServiceManagerRequestType  string
+}
+
+type PubMapStruct struct {
+	CreateEnglish   bool   `json:"CreateEnglish"`
+	DatePublished   string `json:"DatePublished"`
+	Description     string `json:"Description"`
+	LanguageCode    string `json:"LanguageCode"`
+	Publish         bool   `json:"Publish"`
+	ShowWorkaround  bool   `json:"ShowWorkaround"`
+	PublishedStatus string `json:"PublishedStatus"`
+	Workaround      string `json:"Workaround"`
+	ServiceName     string
+	ServiceID       string
+	RequestRef      string
+	RequestType     string
+}
+
+type PubExtraStruct struct {
+	HDatePublished  string `json:"h_date_published"`
+	HRequestType    string `json:"h_request_type"`
+	HServiceID      string `json:"h_service_id"`
+	HServiceName    string `json:"h_service_name"`
+	HShowWorkaround int64  `json:"h_show_workaround"`
+	HStatus         string `json:"h_status"`
+	HWorkaround     string `json:"h_workaround"`
 }
 
 type xmlmcResponse struct {
