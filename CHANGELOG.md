@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.9.1 (May 17th, 2022)
+
+### Fixed
+
+- Including date parsing support for published Problem and Known Error records
+
 ## 1.9.0 (May 17th, 2022)
 
 ### Features

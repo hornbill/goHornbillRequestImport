@@ -627,7 +627,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 			publishDetails.ShowWorkaround = request.GenericImportConf.PublishedMapping.ShowWorkaround
 			publishDetails.LanguageCode = getFieldValue(fmt.Sprintf("%v", request.GenericImportConf.PublishedMapping.LanguageCode), &request.CallMap)
 			publishDetails.CreateEnglish = request.GenericImportConf.PublishedMapping.CreateEnglish
-			publishDetails.DatePublished = getFieldValue(fmt.Sprintf("%v", request.GenericImportConf.PublishedMapping.DatePublished), &request.CallMap)
+			publishDetails.DatePublished = parseDateTime(getFieldValue(fmt.Sprintf("%v", request.GenericImportConf.PublishedMapping.DatePublished), &request.CallMap), "DatePublished", buffer)
 
 			publishRequest(publishDetails, espXmlmc, buffer)
 		}
