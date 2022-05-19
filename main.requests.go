@@ -628,6 +628,7 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 			publishDetails.LanguageCode = getFieldValue(fmt.Sprintf("%v", request.GenericImportConf.PublishedMapping.LanguageCode), &request.CallMap)
 			publishDetails.CreateEnglish = request.GenericImportConf.PublishedMapping.CreateEnglish
 			publishDetails.DatePublished = parseDateTime(getFieldValue(fmt.Sprintf("%v", request.GenericImportConf.PublishedMapping.DatePublished), &request.CallMap), "DatePublished", buffer)
+			publishDetails.LastUpdated = parseDateTime(getFieldValue(fmt.Sprintf("%v", request.GenericImportConf.PublishedMapping.LastUpdated), &request.CallMap), "LastUpdated", buffer)
 
 			publishRequest(publishDetails, espXmlmc, buffer)
 		}
@@ -672,6 +673,7 @@ func publishRequest(requestDetails PubMapStruct, espXmlmc *apiLib.XmlmcInstStruc
 	}
 	extraParams.HStatus = requestDetails.PublishedStatus
 	extraParams.HWorkaround = requestDetails.Workaround
+	extraParams.HLastUpdated = requestDetails.LastUpdated
 	extraJSON, err := json.Marshal(extraParams)
 	if err != nil {
 		fmt.Println(err)
@@ -687,8 +689,7 @@ func publishRequest(requestDetails PubMapStruct, espXmlmc *apiLib.XmlmcInstStruc
 		buffer.WriteString(loggerGen(1, XMLPub))
 		return
 	}
-	var xmlRespon xmlmcResponse
-
+	var xmlRespon xmlmcPublishedResponse
 	errLogDate := xml.Unmarshal([]byte(XMLPublish), &xmlRespon)
 	if errLogDate != nil {
 		buffer.WriteString(loggerGen(4, "Unmarshal error: Unable to publish ["+requestDetails.RequestRef+"] : "+errLogDate.Error()))
@@ -700,8 +701,83 @@ func publishRequest(requestDetails PubMapStruct, espXmlmc *apiLib.XmlmcInstStruc
 		buffer.WriteString(loggerGen(1, XMLPub))
 		return
 	}
+	if extraParams.HLastUpdated != "" {
+		linkedID := xmlRespon.LinkedID
+		//Get all linked IDs
+		transIDs := getPublishedTranslations(linkedID, espXmlmc, buffer)
+		if len(transIDs) > 0 {
+			for _, v := range transIDs {
+				updatePublishedLastUpdated(v, extraParams.HLastUpdated, espXmlmc, buffer)
+			}
+		}
+	}
 	buffer.WriteString(loggerGen(1, "Request Published Successfully: ["+requestDetails.RequestRef+"]"))
 	counters.pubished++
+}
+
+func updatePublishedLastUpdated(tID int, lastUpdated string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
+	espXmlmc.SetParam("application", "com.hornbill.servicemanager")
+	espXmlmc.SetParam("entity", "PublishedRequests")
+	espXmlmc.OpenElement("primaryEntityData")
+	espXmlmc.OpenElement("record")
+	espXmlmc.SetParam("h_id", strconv.Itoa(tID))
+	espXmlmc.SetParam("h_last_updated", lastUpdated)
+	espXmlmc.CloseElement("record")
+	espXmlmc.CloseElement("primaryEntityData")
+	XMLPub := espXmlmc.GetParam()
+	XMLPublish, xmlmcErr := espXmlmc.Invoke("data", "entityUpdateRecord")
+	if xmlmcErr != nil {
+		buffer.WriteString(loggerGen(4, "XMLMC error: Unable to update pulished last update date for ["+strconv.Itoa(tID)+"] : "+xmlmcErr.Error()))
+		buffer.WriteString(loggerGen(1, XMLPub))
+		return
+	}
+	var xmlRespon xmlmcPublishedResponse
+	errLogDate := xml.Unmarshal([]byte(XMLPublish), &xmlRespon)
+	if errLogDate != nil {
+		buffer.WriteString(loggerGen(4, "Unmarshal error: Unable to update pulished last update date for ["+strconv.Itoa(tID)+"] : "+errLogDate.Error()))
+		buffer.WriteString(loggerGen(1, XMLPub))
+		return
+	}
+	if xmlRespon.MethodResult != "ok" {
+		buffer.WriteString(loggerGen(4, "MethodResult not OK: Unable to update pulished last update date for ["+strconv.Itoa(tID)+"] : "+xmlRespon.State.ErrorRet))
+		buffer.WriteString(loggerGen(1, XMLPub))
+	}
+}
+
+func getPublishedTranslations(linkedID int, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) []int {
+	var publishedTranslations []int
+	espXmlmc.SetParam("application", "com.hornbill.servicemanager")
+	espXmlmc.SetParam("entity", "PublishedRequests")
+	espXmlmc.SetParam("matchScope", "all")
+	espXmlmc.OpenElement("searchFilter")
+	espXmlmc.SetParam("column", "h_published_request_id")
+	espXmlmc.SetParam("value", strconv.Itoa(linkedID))
+	espXmlmc.SetParam("matchType", "exact")
+	espXmlmc.CloseElement("searchFilter")
+
+	XMLPub := espXmlmc.GetParam()
+	XMLPublish, xmlmcErr := espXmlmc.Invoke("data", "entityBrowseRecords2")
+	if xmlmcErr != nil {
+		buffer.WriteString(loggerGen(4, "XMLMC error: Unable to return pulished translations for ["+strconv.Itoa(linkedID)+"] : "+xmlmcErr.Error()))
+		buffer.WriteString(loggerGen(1, XMLPub))
+		return publishedTranslations
+	}
+	var xmlRespon xmlmcPublishedResponse
+	errLogDate := xml.Unmarshal([]byte(XMLPublish), &xmlRespon)
+	if errLogDate != nil {
+		buffer.WriteString(loggerGen(4, "Unmarshal error: Unable to return pulished translations for ["+strconv.Itoa(linkedID)+"] : "+errLogDate.Error()))
+		buffer.WriteString(loggerGen(1, XMLPub))
+		return publishedTranslations
+	}
+	if xmlRespon.MethodResult != "ok" {
+		buffer.WriteString(loggerGen(4, "MethodResult not OK: Unable to return pulished translations for ["+strconv.Itoa(linkedID)+"] : "+xmlRespon.State.ErrorRet))
+		buffer.WriteString(loggerGen(1, XMLPub))
+		return publishedTranslations
+	}
+	for _, v := range xmlRespon.RowData {
+		publishedTranslations = append(publishedTranslations, v.ID)
+	}
+	return publishedTranslations
 }
 
 func linkRequests(parentRef, newRef string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {

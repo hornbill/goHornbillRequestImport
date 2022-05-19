@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	version           = "1.9.1"
+	version           = "1.10.0"
 	appServiceManager = "com.hornbill.servicemanager"
 	repo              = "goHornbillRequestImport"
 )
@@ -132,6 +132,7 @@ type PubMapStruct struct {
 	DatePublished   string `json:"DatePublished"`
 	Description     string `json:"Description"`
 	LanguageCode    string `json:"LanguageCode"`
+	LastUpdated     string `json:"LastUpdated"`
 	Publish         bool   `json:"Publish"`
 	ShowWorkaround  bool   `json:"ShowWorkaround"`
 	PublishedStatus string `json:"PublishedStatus"`
@@ -150,6 +151,7 @@ type PubExtraStruct struct {
 	HShowWorkaround int64  `json:"h_show_workaround"`
 	HStatus         string `json:"h_status"`
 	HWorkaround     string `json:"h_workaround"`
+	HLastUpdated    string `json:"h_last_updated"`
 }
 
 type xmlmcResponse struct {
@@ -184,6 +186,16 @@ type xmlmcBPMSpawnedStruct struct {
 	MethodResult string      `xml:"status,attr"`
 	Identifier   string      `xml:"params>identifier"`
 	State        stateStruct `xml:"state"`
+}
+type xmlmcPublishedResponse struct {
+	MethodResult string         `xml:"status,attr"`
+	State        stateStruct    `xml:"state"`
+	LinkedID     int            `xml:"params>linkedId"`
+	RowData      []pubRecStruct `xml:"params>rowData>row"`
+}
+
+type pubRecStruct struct {
+	ID int `xml:"h_id"`
 }
 
 //----- Site Structs

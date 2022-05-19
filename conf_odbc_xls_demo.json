@@ -200,7 +200,8 @@
           "PublishedStatus": "publish",
           "DatePublished": "2022-05-12 16:12:05",
           "ShowWorkaround": false,
-          "Workaround": "[WORKAROUND]"
+          "Workaround": "[WORKAROUND]",
+          "LastUpdated": "2022-05-12 16:12:05"
       },
       "RequestHistoricUpdateQuery":"SELECT * FROM [diaryData$] WHERE CallReference = {RequestGUID}",
       "HistoricUpdateMapping":{
