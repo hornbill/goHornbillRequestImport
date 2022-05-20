@@ -1,10 +1,17 @@
 # CHANGELOG
 
+## 1.11.0 (May 20th, 2022)
+
+### Feature 
+
+- Added logic to create initial status history record, to support changes in Service Manager
+
 ## 1.10.0 (May 19th, 2022)
 
 ### Feature
 
 - Added support to set the Last Updated field against published requests
+
 ## 1.9.1 (May 17th, 2022)
 
 ### Fixed

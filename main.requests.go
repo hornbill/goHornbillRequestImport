@@ -598,6 +598,9 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 			updateLogDate(newReference, strLoggedDate, espXmlmc, buffer)
 		}
 
+		//Now add status history
+		addStatusHistory(newReference, strStatus, strLoggedDate, espXmlmc, buffer)
+
 		//Now do BPM Processing
 		if strStatus != "status.resolved" &&
 			strStatus != "status.closed" &&
@@ -652,6 +655,38 @@ func logNewCall(request RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer
 		espXmlmc.ClearParam()
 	}
 	return oldReference, newReference, oldGUID
+}
+
+func addStatusHistory(requestRef, requestStatus, dateLogged string, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
+	espXmlmc.SetParam("application", "com.hornbill.servicemanager")
+	espXmlmc.SetParam("entity", "RequestStatusHistory")
+	espXmlmc.OpenElement("primaryEntityData")
+	espXmlmc.OpenElement("record")
+	espXmlmc.SetParam("h_request_id", requestRef)
+	espXmlmc.SetParam("h_status", requestStatus)
+	espXmlmc.SetParam("h_timestamp", dateLogged)
+	espXmlmc.CloseElement("record")
+	espXmlmc.CloseElement("primaryEntityData")
+	XMLPub := espXmlmc.GetParam()
+	XMLPublish, xmlmcErr := espXmlmc.Invoke("data", "entityAddRecord")
+	if xmlmcErr != nil {
+		buffer.WriteString(loggerGen(4, "XMLMC error: Unable to add status history record for ["+requestRef+"] : "+xmlmcErr.Error()))
+		buffer.WriteString(loggerGen(1, XMLPub))
+		return
+	}
+	var xmlRespon xmlmcPublishedResponse
+	errStatusHist := xml.Unmarshal([]byte(XMLPublish), &xmlRespon)
+	if errStatusHist != nil {
+		buffer.WriteString(loggerGen(4, "Unmarshal error: Unable to add status history record for ["+requestRef+"] : "+errStatusHist.Error()))
+		buffer.WriteString(loggerGen(1, XMLPub))
+		return
+	}
+	if xmlRespon.MethodResult != "ok" {
+		buffer.WriteString(loggerGen(4, "MethodResult not OK: Unable to add status history record for ["+requestRef+"] : "+xmlRespon.State.ErrorRet))
+		buffer.WriteString(loggerGen(1, XMLPub))
+		return
+	}
+	buffer.WriteString(loggerGen(1, "Request Status History record success: ["+requestRef+"]"))
 }
 
 func publishRequest(requestDetails PubMapStruct, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
