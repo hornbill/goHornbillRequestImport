@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	version           = "1.11.0"
+	version           = "1.12.0"
 	appServiceManager = "com.hornbill.servicemanager"
 	repo              = "goHornbillRequestImport"
 )
@@ -66,7 +66,7 @@ type counterTypeStruct struct {
 	pubished        int
 }
 
-//----- Config Data Structs
+// ----- Config Data Structs
 type importConfStruct struct {
 	HBConf                       hbConfStruct //Hornbill Instance connection details
 	CustomerType                 int
@@ -159,7 +159,7 @@ type xmlmcResponse struct {
 	State        stateStruct `xml:"state"`
 }
 
-//----- Shared Structs -----
+// ----- Shared Structs -----
 type stateStruct struct {
 	Code     string `xml:"code"`
 	ErrorRet string `xml:"error"`
@@ -173,7 +173,7 @@ type xmlmcSysSettingResponse struct {
 	Setting      string      `xml:"params>option>value"`
 }
 
-//----- Request Logged Structs
+// ----- Request Logged Structs
 type xmlmcRequestResponseStruct struct {
 	MethodResult     string      `xml:"status,attr"`
 	RequestID        string      `xml:"params>primaryEntityData>record>h_pk_reference"`
@@ -198,7 +198,7 @@ type pubRecStruct struct {
 	ID int `xml:"h_id"`
 }
 
-//----- Site Structs
+// ----- Site Structs
 type siteListStruct struct {
 	SiteName string
 	SiteID   int
@@ -211,7 +211,7 @@ type xmlmcSiteListResponse struct {
 	State        stateStruct `xml:"state"`
 }
 
-//----- Priority Structs
+// ----- Priority Structs
 type priorityListStruct struct {
 	PriorityName string
 	PriorityID   int
@@ -223,7 +223,7 @@ type xmlmcPriorityListResponse struct {
 	State        stateStruct `xml:"state"`
 }
 
-//----- Service Structs
+// ----- Service Structs
 type serviceListStruct struct {
 	ServiceName          string
 	ServiceID            int
@@ -264,7 +264,7 @@ type xmlmcCatalogItemListResponse struct {
 	State        stateStruct             `xml:"state"`
 }
 
-//----- Team Structs
+// ----- Team Structs
 type teamListStruct struct {
 	TeamName string
 	TeamID   string
@@ -276,7 +276,7 @@ type xmlmcTeamListResponse struct {
 	State        stateStruct `xml:"state"`
 }
 
-//----- Category Structs
+// ----- Category Structs
 type categoryListStruct struct {
 	CategoryCode string
 	CategoryID   string
@@ -289,7 +289,7 @@ type xmlmcCategoryListResponse struct {
 	State        stateStruct `xml:"state"`
 }
 
-//----- Analyst Structs
+// ----- Analyst Structs
 type analystListStruct struct {
 	AnalystID   string
 	AnalystName string
@@ -302,7 +302,7 @@ type xmlmcAnalystListResponse struct {
 	State            stateStruct `xml:"state"`
 }
 
-//----- Customer Structs
+// ----- Customer Structs
 type customerListStruct struct {
 	CustomerID      int
 	CustomerLoginID string
@@ -319,7 +319,7 @@ type xmlmcCustomerListResponse struct {
 	State             stateStruct `xml:"state"`
 }
 
-//RequestDetails struct for chan
+// RequestDetails struct for chan
 type RequestDetails struct {
 	CallClass         string
 	CallMap           map[string]interface{}
