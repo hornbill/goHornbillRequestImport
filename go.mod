@@ -1,6 +1,6 @@
 module goHornbillRequestImport
 
-go 1.19
+go 1.25.0
 
 require (
 	github.com/alexbrainman/odbc v0.0.0-20211220213544-9c9a2e61c5e2
@@ -26,7 +26,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/olekukonko/ts v0.0.0-20171002115256-78ecb04241c0 // indirect
-	golang.org/x/crypto v0.31.0 // indirect
-	golang.org/x/net v0.23.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/crypto v0.52.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
 )
