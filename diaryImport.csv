@@ -1,0 +1,11 @@
+CALLREFERENCE,ACTIONDATE,TIMESPENT,UPDATETYPE,UPDATEINDEX,ANALYSTID,ANALYSTNAME,TEAMID,TYPE,SOURCE,ACTION
+CSVIMP0001001,2026-06-01 09:20:00,5,Update,1,victor4,Victor Vector,SD,Update,Analyst,Call logged and assigned to Service Desk
+CSVIMP0001001,2026-06-01 11:00:00,10,Update,2,victor4,Victor Vector,SD,Phone Call,Analyst,Called user - asked them to remove and re-add the mail account
+CSVIMP0001003,2026-06-03 12:00:00,5,Update,1,victor4,Victor Vector,SD,Update,Analyst,Printer power cycled - still offline
+CSVIMP0001003,2026-06-04 09:30:00,15,Update,2,victor4,Victor Vector,SD,Update,Analyst,Network port fault found - patched to spare port
+CSVIMP0001003,2026-06-05 16:20:00,5,Resolve,3,victor4,Victor Vector,SD,Resolution,Analyst,Printer back online - confirmed with users on 2nd floor
+CSVIMP0001004,2026-06-04 08:30:00,10,Update,1,victor4,Victor Vector,SD,Update,Analyst,Checked AD group membership - user missing from finance group
+CSVIMP0001004,2026-06-10 14:00:00,5,Close,2,victor4,Victor Vector,SD,Closure,Analyst,User added to finance group and access confirmed
+CSVIMP0001005,2026-06-05 13:30:00,5,Update,1,victor4,Victor Vector,SD,Update,Analyst,Vendor contacted for renewal quote - placing on hold pending response
+CSVIMP0001007,2026-06-09 15:15:00,5,Update,1,victor4,Victor Vector,SD,Update,Analyst,Account unlocked and temporary password issued
+CSVIMP0001007,2026-06-09 17:45:00,5,Close,2,victor4,Victor Vector,SD,Closure,Analyst,User confirmed access restored - closing call

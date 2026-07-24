@@ -66,22 +66,27 @@ func main() {
 		importConf.AppDBConf.Driver == "mssql" ||
 		importConf.AppDBConf.Driver == "mysql320" ||
 		importConf.AppDBConf.Driver == "odbc" ||
-		importConf.AppDBConf.Driver == "csv" {
+		importConf.AppDBConf.Driver == "csv" ||
+		importConf.AppDBConf.Driver == "csvfile" {
 		appDBDriver = importConf.AppDBConf.Driver
 	} else {
 		logger(4, "The driver ("+importConf.AppDBConf.Driver+") for the Application Database specified in the configuration file is not valid.", true)
 		return
 	}
 
-	//-- Build DB connection string
-	connStrAppDB = buildConnectionString()
+	//-- Build DB connection string - not required for native CSV imports
+	if appDBDriver != "csvfile" {
+		connStrAppDB = buildConnectionString()
+	}
 
 	//Get request type import config, process each in turn
 	for _, val := range importConf.RequestTypesToImport {
 		if val.Import {
 			reqPrefix = getRequestPrefix(val.ServiceManagerRequestType)
 			mapGenericConf = val
-			if appDBDriver == "odbc" ||
+			if appDBDriver == "csvfile" {
+				processCallDataCSV()
+			} else if appDBDriver == "odbc" ||
 				appDBDriver == "xls" ||
 				appDBDriver == "csv" {
 				processCallDataODBC()

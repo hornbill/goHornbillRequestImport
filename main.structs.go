@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	version           = "1.12.0"
+	version           = "1.13.0"
 	appServiceManager = "com.hornbill.servicemanager"
 	repo              = "goHornbillRequestImport"
 )
@@ -74,6 +74,7 @@ type importConfStruct struct {
 	DateTimeFormat               string
 	RelatedRequestQuery          string
 	AppDBConf                    appDBConfStruct //App Data (swdata) connection details
+	CSVConf                      csvConfStruct   //Native CSV parsing options
 	AllowUnpublishedCatalogItems bool
 	LinkedRequestPostVilibility  string
 	RequestTypesToImport         []reqestConfStruct
@@ -95,6 +96,12 @@ type spawnBPMStruct struct {
 	BPMID     string
 }
 
+type csvConfStruct struct {
+	CommaCharacter        string
+	LazyQuotes            bool
+	FieldsPerRecord       int
+	CarriageReturnRemoval bool
+}
 type appDBConfStruct struct {
 	Address  string
 	Driver   string
@@ -106,25 +113,28 @@ type appDBConfStruct struct {
 	Encrypt  bool
 }
 type reqestConfStruct struct {
-	AdditionalFieldMapping     map[string]interface{}
-	AppRequestType             string
-	CoreFieldMapping           map[string]interface{}
-	DefaultPriority            string
-	DefaultService             string
-	DefaultCatalog             int
-	DefaultTeam                string
-	DefaultOwner               string
-	Description                string
-	HistoricUpdateMapping      map[string]interface{}
-	Import                     bool
-	PublishedMapping           PubMapStruct `json:"PublishedMapping"`
-	RequestHistoricUpdateQuery string
-	RequestQuery               string
-	RequestReferenceColumn     string
-	RequestGUID                string
-	ParentRequestRefColumn     string
-	RequestRelatedQuery        string
-	ServiceManagerRequestType  string
+	AdditionalFieldMapping      map[string]interface{}
+	AppRequestType              string
+	CoreFieldMapping            map[string]interface{}
+	CSVFile                     string
+	CSVHistoricUpdatesFile      string
+	CSVHistoricUpdatesRefColumn string
+	DefaultPriority             string
+	DefaultService              string
+	DefaultCatalog              int
+	DefaultTeam                 string
+	DefaultOwner                string
+	Description                 string
+	HistoricUpdateMapping       map[string]interface{}
+	Import                      bool
+	PublishedMapping            PubMapStruct `json:"PublishedMapping"`
+	RequestHistoricUpdateQuery  string
+	RequestQuery                string
+	RequestReferenceColumn      string
+	RequestGUID                 string
+	ParentRequestRefColumn      string
+	RequestRelatedQuery         string
+	ServiceManagerRequestType   string
 }
 
 type PubMapStruct struct {

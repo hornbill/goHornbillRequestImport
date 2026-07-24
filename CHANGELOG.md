@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 1.13.0 (July 24th 2026)
+
+### Feature
+
+- Added native support for importing requests from CSV files, without the need for an ODBC driver or DSN.
+
 ## 1.12.0 (February 22nd 2023)
 
 Change:

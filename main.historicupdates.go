@@ -12,6 +12,11 @@ import (
 
 //getHistoricUpdates - query a list of historic updates for an imported request
 func getHistoricUpdates(request *RequestDetails, espXmlmc *apiLib.XmlmcInstStruct, buffer *bytes.Buffer) {
+	//Native CSV import - retrieve historic updates from CSV file
+	if appDBDriver == "csvfile" {
+		getHistoricUpdatesCSV(request, espXmlmc, buffer)
+		return
+	}
 	oldCallGUID := request.AppRequestGUID
 	oldCallRef := request.AppRequestRef
 	buffer.WriteString(loggerGen(1, "Retrieving Historic Updates for "+oldCallRef))
